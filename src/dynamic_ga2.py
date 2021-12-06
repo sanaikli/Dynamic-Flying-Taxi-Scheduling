@@ -18,33 +18,35 @@ import cProfile
 import pstats
 import random
 import time
+import copy
 
 #---------------------------------------
 
 
-# the function "cal_obj2" implements the Second objective-function that maximizes the total service time.
+# the function "cal_obj2" implements the Second objective-function that
+# maximizes the total service time
 # input : 
-#        * nb_taxis              : total number of taxis
-#        * matrix_task_chrom     : a python dictionary representing the tasks of each taxi
-#                                  the key represents the taxi
-#                                  the values are a list of tasks for the taxi
+#        * nb_taxis         : total number of taxis
+#        * m_task_chrom     : matrix task for chromosome, wich represents a python 
+#                             dictionary representing the tasks of each taxi
+#                             the key represents the taxi
+#                             the values are a list of tasks for the taxi
 #
-#        *matrix_start_time_chrom: a python dictionary representing the start time of each task.
-#                                  the key represents the taxi
-#                                  the values are a list of starting time of each task
-#
-#        *matrix_fini_time_chrom : a python dictionary representing the finish time of each task.
-#                                  the key represents the taxi
-#                                  the values are a list of finishing time of each task
+#        * m _st_chrom      : python dictionary representing the start time of each task.
+#                             the key represents the taxi
+#                             the values are a list of starting time of each task
+#        * matrix_ft_chrom  : python dictionary representing the finish time of each task.
+#                             the key represents the taxi
+#                             the values are a list of finishing time of each task
 # output: 
-#        * accumulate_service_time:the value of the objective-function
+#        * accumulate_service_time : the value of the objective-function
 
-def cal_obj2(nb_taxis, matrix_task_chrom, matrix_start_time_chrom, matrix_fini_time_chrom):
+def cal_obj2(nb_taxis, m_task_chrom, m_st_chrom, m_ft_chrom):
     accumulate_service_time = 0
     for j in range(nb_taxis):
-        for i in range(len(matrix_task_chrom["taxi"+str(j+1)])):
-            if matrix_task_chrom["taxi"+str(j+1)][i] != "b":
-                accumulate_service_time += matrix_fini_time_chrom["taxi"+str(j+1)][i] - matrix_start_time_chrom["taxi"+str(j+1)][i]
+        for i in range(len(m_task_chrom["taxi"+str(j+1)])):
+            if m_task_chrom["taxi"+str(j+1)][i] != "b":
+                accumulate_service_time += m_ft_chrom["taxi"+str(j+1)][i] - m_st_chrom["taxi"+str(j+1)][i]
     return accumulate_service_time
 
 
@@ -71,38 +73,44 @@ def sorting_population(arr_pop, arr_res):
 # a score corresponding to a request serviced by a flying taxi
 
 # input : 
-#        * chromo       : a python list that represents the chromosome (Individual
-#                         solution in the GA algorithm)
-#        * battery_level: a list for battery level of each taxi
-#        * center_val   : [x,y]--coordinates of the center     
-#        * av_taxis     : list of available taxis
-#        * av_data      : a pandas dataframe with parameters for the available requests
-#        * matrix_task  : a python dictionary representing the tasks of each taxi
-#        * matrix_st    : a python dictionary representing the start time of each task
-#        * matrix_ft    : a python dictionary representing the finish time of each task
+#        * chromo     : chromosome, which is a python list that represents the chromosome 
+#                       (Individual solution in the GA algorithm)
+#        * center_val : [x,y]--coordinates (values) of the recharging center     
+#        * av_taxis   : list of available taxis
+#        * av_data    : available data, which is a pandas dataframe with parameters
+#                       for the available requests
+#        * all_data   : pandas dataframe with parameters for all requests
+#        * serv       : list of the served requests
+#        * av_bl      : available battery level in the current horizon
+#        * m_task     : python dict that represents the matrix task (explained above)
+#        * m_st       : python dict representing the (matrix) start time of each task
+#        * m_ft       : python dictionary representing the finishing time of each task
+
 
 # output: (if details == None)
 #        * obj_val_chrom    : the value of the objective-function
 
 # output: (if details != None)
-#        * serv             : list of the served requests
-#                             the keys represent the requests index, and 
-#                             the values are the pick-up times
-#        * battery_level    : updated battery level
-#        * matrix_task      : updated mtrix_task (with new requests)
-#        * matrix_start_time: updated mtrix_start_time
-#        * matrix_fini_time : updated mtrix_fini_time
-#        * obj_val_chrom    : the value of the objective-function
-
+#        * serv          : list of the served requests
+#        * new_bl        : updated battery level
+#        * new_m_task    : updated matrix task (with new served requests)
+#        * new_m_st      : updated matrix start time
+#        * new_m_ft      : updated matrix finished time
+#        * obj_val_chrom : the value of the objective-function
 
 #----------------------------------------------
-def decode_GA(chromo, battery_level, center_val, av_taxis, av_data, all_data,
-              matrix_task, matrix_st , matrix_ft, serv_req, detail = None):
+def decode_GA(chromo, center_val, av_taxis, av_data, all_data, 
+              serv_req, av_bl, m_task, m_st, m_ft, detail):
+    
+    new_m_task = copy.deepcopy(m_task)
+    new_m_st   = copy.deepcopy(m_st)
+    new_m_ft   = copy.deepcopy(m_ft)
+    new_bl     = av_bl.copy()
     #----------------------------------------------
-    #print("\n* available data = \n", av_data)
-    nb_taxis       = len(av_taxis)
-    chrom_priority = chromo.copy()
-    #ideal priority combination
+    
+    
+    nb_taxis            = len(av_taxis)
+    chrom_priority      = chromo.copy()
     combine_ideal_chrom = []
     
     for i in range(len(chrom_priority)):
@@ -111,10 +119,11 @@ def decode_GA(chromo, battery_level, center_val, av_taxis, av_data, all_data,
         
     chrom_priority = combine_ideal_chrom
     #### End of ideal priority combination
-    
+
     order_assign = sorted(range(len(chrom_priority)),
                           key=lambda k: chrom_priority[k], reverse=True)
-    
+    #print("\n *********** order_assign = ", order_assign[:9],"...")
+    serv_req = []
     for i_gene in order_assign:
         i_req = (i_gene//nb_taxis)+1
         j_taxi = (i_gene%nb_taxis)+1
@@ -122,96 +131,119 @@ def decode_GA(chromo, battery_level, center_val, av_taxis, av_data, all_data,
         #----------------------------------------------
         req_id          = av_data.req_id[i_req-1]
         req_id_data_idx = av_data.loc[av_data['req_id'] == req_id].index[0]
-        #print("\n req_id : ", req_id)
+        """print("\n * req_id  =  ", req_id, " * j_taxi = ", j_taxi)
+        print(" * pick_t: ", av_data.pick_t[req_id_data_idx])"""
         #----------------------------------------------
         
         dur_prep       = uf.cal_dur_move_time(center_val, av_data, req_id_data_idx)
         prev_fini_time = 0 
         prev_req       = 'c'
-
-        if (len(matrix_task["taxi"+str(j_taxi)]) != 0):
-            prev_req          = matrix_task["taxi"+str(j_taxi)][-1]
-            if (prev_req != "b"):
-                
+        if (len(new_m_task["taxi"+str(j_taxi)]) != 0):
+            prev_req          = new_m_task["taxi"+str(j_taxi)][-1]
+            if (prev_req != "b"): 
                 #----------------------------------------------
                 #print(" prev_req : ", prev_req)
                 prev_req_data_idx = all_data.loc[all_data['req_id'] == prev_req].index[0]
                 #----------------------------------------------
                 
-                dur_prep = uf.cal_dur_move_time(center_val, all_data,
-                                                req_id_data_idx,
-                                                prev_req_data_idx)
-                
-            prev_fini_time = matrix_ft["taxi"+str(j_taxi)][-1]
-        
+                dur_prep = uf.cal_dur_move_time(center_val, all_data, req_id_data_idx, prev_req_data_idx)
+            prev_fini_time = new_m_ft["taxi"+str(j_taxi)][-1]
+
+
         #Check enough time to pick up  
         enough_time_to_pick = False
         if prev_fini_time + dur_prep <= av_data["pick_t"][req_id_data_idx]:
             enough_time_to_pick = True
+
         
         dur_t_req       = av_data["dur_t"][req_id_data_idx]
-        dur_back_center = uf.cal_dur_back_to_center(req_id_data_idx,
-                                                 center_val,
-                                                 av_data)
+        dur_back_center = uf.cal_dur_back_to_center(req_id_data_idx, center_val, av_data)
         
         # Check enough battery to service and go back to center if needed
         enough_battery = False
-        if battery_level[j_taxi-1] - uf.bcr*(dur_prep+dur_t_req+dur_back_center) >= uf.b_min:
+        if new_bl[j_taxi-1] - uf.bcr*(dur_prep+dur_t_req+dur_back_center) >= uf.b_min:
             enough_battery = True
         
         # Possible to response the demand?
         if enough_time_to_pick:
             if enough_battery:
                 if av_data["pick_t"][req_id_data_idx]+dur_t_req <= uf.T:
-                    matrix_task["taxi"+str(j_taxi)].append(req_id)
-                    matrix_st["taxi"+str(j_taxi)].append(av_data["pick_t"][req_id_data_idx])
-                    matrix_ft["taxi"+str(j_taxi)].append(round((av_data["pick_t"] [req_id_data_idx]+dur_t_req), 2))
-                    battery_level[j_taxi-1] = round(battery_level[j_taxi-1] - uf.bcr*(dur_prep+dur_t_req), 2)
-                    
+                    new_m_task["taxi"+str(j_taxi)].append(req_id)
+                    new_m_st["taxi"+str(j_taxi)].append(av_data["pick_t"][req_id_data_idx])
+                    new_m_ft["taxi"+str(j_taxi)].append(round((av_data["pick_t"] [req_id_data_idx]+dur_t_req), 2))
+                    new_bl[j_taxi-1] = round(new_bl[j_taxi-1] - uf.bcr*(dur_prep+dur_t_req), 2) 
                     #----------------------------------------------
-                    # add i_req to served requests
+                    # add req_id to served requests
                     serv_req.append(req_id)
                     #----------------------------------------------
-                    
                     # remove the assigned demand from the chromosome
                     for j_count in range(nb_taxis):
                         elem_remove = nb_taxis*(i_req-1) + j_count
+                        #print(" * elem_remove= ", elem_remove)
                         if (i_gene != elem_remove):
                             order_assign.remove(elem_remove)
-            else:
-                matrix_task["taxi"+str(j_taxi)].append("b")
-                dur_prev_to_center = uf.cal_dur_back_to_center(req_id_data_idx,
-                                                            center_val,
-                                                            av_data)
-                matrix_st["taxi"+str(j_taxi)].append(prev_fini_time + dur_prev_to_center)
-                matrix_ft["taxi"+str(j_taxi)].append(prev_fini_time + dur_prev_to_center + uf.R)
-                battery_level[j_taxi-1] = 100
-                dur_prep1 = uf.cal_dur_move_time(center_val,
-                                              av_data,
-                                              req_id_data_idx)
-                prev_fini_time1 = matrix_ft["taxi"+str(j_taxi)][-1]
-                if ((prev_fini_time1 + dur_prep1 <= av_data["pick_t"][req_id_data_idx]) & (battery_level[j_taxi-1] - uf.bcr*(dur_prep1+dur_t_req+dur_back_center) >= 
-                                                                                   uf.b_min)):
-                    if av_data["pick_t"][req_id_data_idx]+dur_t_req <= uf.T:
-                        matrix_task["taxi"+str(j_taxi)].append(av_data.req_id[req_id_data_idx])
-                        matrix_st["taxi"+str(j_taxi)].append(av_data["pick_t"][req_id_data_idx])
-                        matrix_ft["taxi"+str(j_taxi)].append(round((av_data["pick_t"][req_id_data_idx]+dur_t_req), 2))
-                        battery_level[j_taxi-1] = round(battery_level[j_taxi-1] - uf.bcr*(dur_prep1+dur_t_req), 2)
+      
+            #----------------------------------------------
+            # added by Sana for serving requests inside time-windows 
+            else: # charge battery if battery level is not enough
+                new_m_task["taxi"+str(j_taxi)].append("b")
+                dur_prev_to_center = uf.cal_dur_back_to_center(prev_req_data_idx, center_val, all_data)
+                new_m_st["taxi"+str(j_taxi)].append(prev_fini_time + dur_prev_to_center)
+                new_m_ft["taxi"+str(j_taxi)].append(prev_fini_time + dur_prev_to_center + uf.R)
+                new_bl[j_taxi-1] = 100
+        
+                dur_prep1 = uf.cal_dur_move_time(center_val, av_data, req_id_data_idx)
+                prev_fini_time1 = new_m_ft["taxi"+str(j_taxi)][-1]
+
+                # check if it's possible to serve in the time interval [early_t, late_t]
+                if ((prev_fini_time1 + dur_prep1 <= av_data["late_t"][req_id_data_idx]) 
+                    &
+                    (prev_fini_time1 + dur_prep1 >= av_data["early_t"][req_id_data_idx])
+                    &
+                    (new_bl[j_taxi-1] - uf.bcr*(dur_prep1+dur_t_req+dur_back_center) >= 
+                     uf.b_min)):
+                    if av_data["pick_t"][req_id_data_idx]+dur_t_req <= T_sup:
+                        new_m_task["taxi"+str(j_taxi)].append(req_id)
+                        req_id_new_pick_time = round(prev_fini_time1+dur_prep1, 2)
+                        new_m_st["taxi"+str(j_taxi)].append(req_id_new_pick_time)
+                        new_m_ft["taxi"+str(j_taxi)].append(round((req_id_new_pick_time+dur_t_req), 2))
+                        new_bl[j_taxi-1] = round(new_bl[j_taxi-1] - uf.bcr*(dur_prep1+dur_t_req), 2)
                         
-                        #----------------------------------------------
-                        # add req_id to served requests
                         serv_req.append(req_id)
-                        #----------------------------------------------
-                        
-                        #Remove the assigned demand from the chromosome
+                        # remove the assigned demand from the chromosome
                         for j_count in range(nb_taxis):
                             elem_remove = nb_taxis*(i_req-1) + j_count
                             if (i_gene != elem_remove):
                                 order_assign.remove(elem_remove)
+                        
+        elif ((prev_fini_time + dur_prep <= av_data["late_t"][req_id_data_idx]) 
+              &
+              (prev_fini_time+ dur_prep >= av_data["early_t"][req_id_data_idx])
+              &
+              (new_bl[j_taxi-1] - uf.bcr*(dur_prep+dur_t_req+dur_back_center) >= 
+               uf.b_min)):
+            req_id_new_pick_time = round(prev_fini_time+dur_prep, 2)
+            if req_id_new_pick_time+dur_t_req <= T_sup:
+                new_m_task["taxi"+str(j_taxi)].append(req_id)
+                new_m_st["taxi"+str(j_taxi)].append(req_id_new_pick_time)
+                new_m_ft["taxi"+str(j_taxi)].append(round((req_id_new_pick_time+dur_t_req), 2))
+                new_bl[j_taxi-1] = round(new_bl[j_taxi-1] - uf.bcr*(dur_prep+dur_t_req), 2)
+                            
+                serv_req.append(req_id)
+                # remove the assigned demand from the chromosome
+                for j_count in range(nb_taxis):
+                    elem_remove = nb_taxis*(i_req-1) + j_count
+                    if (i_gene != elem_remove):     
+                        order_assign.remove(elem_remove)
+            #----------------------------------------------
+        """print(" * new_m_task [taxi",j_taxi,"] = ", new_m_task["taxi"+str(j_taxi)][-1] )
+        print(" * new_m_st [taxi",j_taxi,"] = ", round(new_m_st["taxi"+str(j_taxi)][-1], 2) )
+        print(" * new_m_ft [taxi",j_taxi,"] = ", round(new_m_ft["taxi"+str(j_taxi)][-1], 2) )
+        print(" * new_m_task = " ,new_m_task)"""
 
-    obj_val_chrom = cal_obj2(nb_taxis, matrix_task, matrix_st, matrix_ft)    
+    obj_val_chrom = cal_obj2(nb_taxis, new_m_task, new_m_st, new_m_ft)   
     if detail != None:
-        return serv_req, battery_level, matrix_task, matrix_st, matrix_ft, obj_val_chrom
+        return serv_req, new_bl, new_m_task, new_m_st, new_m_ft, obj_val_chrom
     else:
         return obj_val_chrom
         
@@ -222,25 +254,25 @@ def decode_GA(chromo, battery_level, center_val, av_taxis, av_data, all_data,
 # to evolve the population in order to find the "best" chromosome/solution
 
 # input : 
-#        * center_val  : [x,y]--coordinates of the charging center     
-#        * av_taxis    : list of available taxis
-#        * av_data     : a pandas dataframe with parameters for the available requests
-#        * bl          : battery level
-#        * matrix_task : a python dictionary representing the tasks/requests serviced by each taxi
-#        * matrix_st   : a python dictionary representing the start time of each task
-#        * matrix_ft   : a python dictionary representing the finish time of each task
+#        * center_val : [x,y]--coordinates (values) of the charging center     
+#        * av_taxis   : list of available taxis
+#        * av_data    : a pandas dataframe with the available requests data
+#        * serv       : list of the served requests
+#        * av_bl      : available battery level
+#        * m_task     : python dictionary representing the tasks/requests serviced by each taxi
+#        * m_st       : python dictionary representing the start time of each task
+#        * m_ft       : python dictionary representing the finish time of each task
 
 # output: 
-#        * serv         : list of the served requests
-#        * final_obj    : final value of the objective-function
-#        * final_bl     : final battery level
-#        * final_task   : final mtri _task 
-#        * final_st_time: final mtrix start time of each request
-#        * final_fi_time: final mtrix finished time of each request
-
+#        * serv          : list of the served requests
+#        * final_obj     : new value of the objective-function
+#        * new_bl        : new battery level
+#        * new_task      : new mtri _task 
+#        * new_m_st_time : new mtrix start time of each request
+#        * new_m_fi_time : new mtrix finished time of each request
 #----------------------------------------------
-def genetic_algorithm(center_val, av_taxis, av_data, all_data, bl, 
-                      matrix_task, matrix_st, matrix_ft, serv_req):
+def genetic_algorithm(center_val, av_taxis, av_data, all_data, serv_req, av_bl,
+                      m_task, m_st, m_ft):
     #----------------------------------------------
     nb_req     = len(av_data)
     nb_taxis   = len(av_taxis)
@@ -251,22 +283,18 @@ def genetic_algorithm(center_val, av_taxis, av_data, all_data, bl,
     result_GA = []
     for i in range(len(population)):
         chromosome     = population[i].copy()
-        bl             = [100]*nb_taxis
-        result_GA_elem = decode_GA(chromosome, bl, center_val, av_taxis, av_data, all_data,
-                                   matrix_task, matrix_st , matrix_ft, serv_req, detail = None)
-         
+        result_GA_elem = decode_GA(chromosome, center_val, av_taxis, av_data, all_data,
+                                   serv_req, av_bl,m_task, m_st, m_ft, detail = None)
         result_GA.append(result_GA_elem)
-        
     
     sorting_population(population, result_GA)
-    best_res = result_GA[0]
-    
-    stop_value = 30
-    nb_select = int(0.1*nb_chrom)
-    nb_crossover = int(0.7*nb_chrom)
-    nb_mutation = nb_chrom - nb_select - nb_crossover
+    best_res      = result_GA[0]
+    stop_value    = 30
+    nb_select     = int(0.1*nb_chrom)
+    nb_crossover  = int(0.7*nb_chrom)
+    nb_mutation   = nb_chrom - nb_select - nb_crossover
     n_not_improve = 0
-    n_iteration = 0
+    n_iteration   = 0
 
     while n_not_improve < stop_value:
         new_pop = []
@@ -286,14 +314,11 @@ def genetic_algorithm(center_val, av_taxis, av_data, all_data, bl,
             new_pop.append(np.random.rand(chrom_size))
     
         population = new_pop
-    
         result_GA = []
         for i in range(nb_chrom):
             chromosome     = population[i].copy()
-            bl             = [100]*nb_taxis
-            result_GA_elem = decode_GA(chromosome, bl, center_val, av_taxis, av_data, all_data,
-                                       matrix_task, matrix_st,matrix_ft,serv_req, detail = None)
-            
+            result_GA_elem = decode_GA(chromosome, center_val, av_taxis, av_data, all_data,
+                                       serv_req, av_bl, m_task, m_st, m_ft, detail = None)
             result_GA.append(result_GA_elem)
     
         sorting_population(population, result_GA)
@@ -305,22 +330,20 @@ def genetic_algorithm(center_val, av_taxis, av_data, all_data, bl,
             n_not_improve = n_not_improve + 1
         n_iteration = n_iteration + 1
 
-
     final_chrom = population[0]
-    bl          = [100]*nb_taxis
-    serv, final_bl, final_task, final_st_time, final_fi_time, final_obj = decode_GA(final_chrom,
-                                                                        bl,
+    serv, new_bl, new_m_task, new_m_st, new_m_ft, new_obj = decode_GA(final_chrom,
                                                                         center_val,
                                                                         av_taxis,
                                                                         av_data,
                                                                         all_data,
-                                                                        matrix_task,
-                                                                        matrix_st,
-                                                                        matrix_ft,
                                                                         serv_req,
+                                                                        av_bl,
+                                                                        m_task,
+                                                                        m_st,
+                                                                        m_ft,
                                                                         detail = True)
-    
-    return serv, final_obj, final_bl, final_task, final_st_time, final_fi_time
+
+    return serv, new_obj, new_bl, new_m_task, new_m_st, new_m_ft
 
 
 # "rh_ga2" implements the rolling-horizon approach for the genetic algorithm. 
@@ -332,68 +355,66 @@ def genetic_algorithm(center_val, av_taxis, av_data, all_data, bl,
 # input : 
 #        * T_inf, T_sup : upper and lower bounds on the scheduling horizon
 #                         [T_inf, T_sup] = [0, 1440](24 hours for example) 
-#        * window_len   : length of the (rolling) time window
+#        * window_len   : length of the (rolling)  window
 #        * av_taxis     : list of available taxis
-#        * data         : pandas dataframe representing the instance
+#        * all_data     : pandas dataframe representing the data for an instance
 #        * center_val   : [x,y]--coordinates of the center   
 
 # output : 
 #        * cpu          : cpu time
 #        * cumul_obj    : the value of the objective-function at the end of the horizon
-#        * serv_req     : dictionary of the served requests
-#                         the keys represent the requests index
-#                         the values are the pick-up times
-#        * unserv_req   : dictionary of the (remaining) unserved requests
-#        * m_task, m_st, and m_ft : matrices of tasks defined in the above function descriptions
+#        * serv_req     : list of the served requests
+#        * av_req       : list of the (remaining) available requests (unserved requests)
+#        * m_task, m_st, and m_ft : matrices of tasksc as defined in the above function descriptions
 
 
 def rh_ga2(T_inf, T_sup, window_len, av_taxis, all_data, center_val):
     av_req     = []
     serv_req   = []
-    unserv_req = []
     
     # matrix initializations
     m_task    = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
     m_st      = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
     m_ft      = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
-    nb_taxis  = len(av_taxis)
-    bl        = [100] * nb_taxis # battery level (100% for all av_taxis)
-    cumul_obj = 0
-    t_i       = time.time()      # initial time (to compute the cpu time)
+    nb_taxis      = len(av_taxis)
+    av_bl         = [100] * nb_taxis # battery level (100% for all av_taxis)
+    cumul_obj     = 0
+    t_i           = time.time()      # initial time (to compute the cpu time)
     
     for t in range(T_inf, T_sup, window_len):
-        print("\n t = ", t) 
+        print("\n * t = ", t) 
         # data preparation
         av_req.extend( [all_data.req_id[i] for i in all_data.index 
                            if all_data.pick_t[i] >= t and all_data.pick_t[i] < t+window_len] )
         av_data = all_data.loc[all_data['req_id'].isin(av_req)]
         l = [i for i in range(len(av_data))]
         av_data.index = l
-        print(" available req :", av_req)
+        print(" * available requests =", av_req)
         new_serv_req, obj, new_bl, new_m_task, new_m_st, new_m_ft = genetic_algorithm(center_val,
                                                                              av_taxis,
                                                                              av_data, 
-                                                                             all_data,
-                                                                             bl, 
-                                                                             m_task, 
+                                                                             all_data, 
+                                                                             serv_req,
+                                                                             av_bl,
+                                                                             m_task,
                                                                              m_st,
-                                                                             m_ft,
-                                                                             serv_req)
+                                                                             m_ft)
 
         cumul_obj += obj
-        m_task     = new_m_task
-        m_st       = new_m_st
-        m_ft       = new_m_ft
-        
-        # update requests list: av_req, serv_req and unserv_req
+        # update requests list: available requests (av_req) and served requests (serv_req)
         av_req = [i for i in av_req if i not in new_serv_req]
         serv_req.extend(new_serv_req)
-        bl = new_bl # battery level updates
+        
+        av_bl  = new_bl # battery level updates
+        m_task = new_m_task
+        m_st   = new_m_st
+        m_ft   = new_m_ft
 
-    t_f = time.time()         # final time
-    cpu = round(t_f - t_i, 4) # cpu calculation
-    cumul_obj = uf.obj_value(m_task,m_st,m_ft, nb_taxis)
-    return cpu, cumul_obj, serv_req, unserv_req, m_task, m_st, m_ft
+    t_f       = time.time()                              # final time
+    cpu       = round(t_f - t_i, 4)                      # cpu calculation
+    cumul_obj = uf.obj_value(m_task, m_st, m_ft, nb_taxis) # final objective-value
+    print(" * unserved requests : ", av_req)
+    return cpu, cumul_obj, serv_req, av_req, m_task, m_st, m_ft
 
 
 
@@ -403,27 +424,30 @@ def rh_ga2(T_inf, T_sup, window_len, av_taxis, all_data, center_val):
 if __name__ == "__main__":
     
     T_inf, T_sup   = 0, 1440 # start and end timesof the day (in minutes)                
-    window_lengths = [1440]#, 90, 180, 240, 360, 480, 720, 840, 1440] 
-    instances      = ["instances/instance10_2.txt", "instances/instance20_2.txt",
-                      "instances/instance20_3.txt","instances/instance30_2.txt",
-                      "instances/instance30_3.txt", "instances/instance30_4.txt", 
-                      "instances/instance50_2.txt", "instances/instance50_3.txt",
+    window_lengths = [480]#, 90, 180, 240, 360, 480, 540, 720, 840, 1440] 
+    instances      = ["instances/instance10_2.txt", "instances/instance20_2.txt" ,
+                      "instances/instance20_3.txt","instances/instance30_2.txt"  ,
+                      "instances/instance30_3.txt", "instances/instance30_4.txt" , 
+                      "instances/instance50_2.txt", "instances/instance50_3.txt" ,
                       "instances/instance50_5.txt", "instances/instance100_3.txt",
                       "instances/instance100_5.txt"]
+    
+    
     ga2_avg_unserv = []
     ga2_avg_obj    = []
     ga2_avg_profit = []
     ga2_avg_cpu    = []
 
     instances = ["instances/instance10_2.txt"]
+    
     for window_len in window_lengths:
-        print("\n\n__________  window_length =  ", window_len," min _____")
+        print("\n\n__________  window length =  ", window_len," min _____")
         argument = 'w+'
-        ga2_obj_values  = []
-        ga2_non_profit  = []
-        ga2_cpus        = []
-        ga2_unserv_perc = [] # percentage of unserved demands
-        ga2_averages_morning, fcfs_averages_evening = [], []
+        ga_obj_values  = []
+        ga_non_profit  = []
+        ga_cpus        = []
+        ga_unserv_perc = [] # percentage of unserved demands
+        ga_averages_morning, fcfs_averages_evening = [], []
 
         for instance_name in instances :
             print("\n--->", instance_name)
@@ -452,14 +476,14 @@ if __name__ == "__main__":
                     p.sort_stats("calls").print_stats()"""
                 #-------------------------------------------------------------
 
-                ga2_obj_values.append(round(obj,2))
-                ga2_cpus.append(round(cpu,2))
-                ga2_non_profit.append(round(uf.dur_non_profit_trip(ga_m_task, all_data, center_val), 2))
-                ga2_unserv_perc.append(round(len(uns_req)/len(all_data),2)*100)
+                ga_obj_values.append(round(obj,2))
+                ga_cpus.append(round(cpu,2))
+                ga_non_profit.append(round(uf.dur_non_profit_trip(ga_m_task, all_data, center_val), 2))
+                ga_unserv_perc.append(round(len(uns_req)/len(all_data)*100,2))
 
-        
-            print("\n\n * Objective values : ", ga2_obj_values)
-            print(" * GA CPU time : ", ga2_cpus)
+        print("\n\n * Objective values : ", ga_obj_values)
+        print(" * Percentage of unserved requests: ", ga_unserv_perc)
+        print(" * GA CPU time : ", ga_cpus)
         
     
 
