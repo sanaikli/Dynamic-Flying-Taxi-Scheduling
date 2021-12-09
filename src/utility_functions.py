@@ -67,10 +67,10 @@ def prepare_data(file_instance, instance_orig):
         #Compute duration time from origin to destination + takeoff and landing time
         data['dist'] = data.apply(lambda x: round(math.sqrt((x['ori_x']-x['des_x'])**2 + (x['ori_y']-x['des_y'])**2),2), axis=1)
         data['dur_t'] = data.apply(lambda x: round(x['dist']/(v_fly*1000/60)+2*s_need,2), axis=1)
-        data['early_t'] = data.apply(lambda x: x['pick_t'], axis=1)
-        data['late_t'] = data.apply(lambda x: x['pick_t'], axis=1)
-        #data['early_t'] = data.apply(lambda x: x['pick_t']-2*x['dur_t'], axis=1)
-        #data['late_t'] = data.apply(lambda x: x['pick_t']+2*x['dur_t'], axis=1)
+        #data['early_t'] = data.apply(lambda x: x['pick_t'], axis=1)
+        #data['late_t'] = data.apply(lambda x: x['pick_t'], axis=1)
+        data['early_t'] = data.apply(lambda x: x['pick_t']-2*x['dur_t'], axis=1)
+        data['late_t'] = data.apply(lambda x: x['pick_t']+2*x['dur_t'], axis=1)
     # print(data)
     return nb_req, nb_taxi, data, center_val
 

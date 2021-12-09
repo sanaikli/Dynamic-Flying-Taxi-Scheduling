@@ -451,7 +451,8 @@ if __name__ == "__main__":
 
         for instance_name in instances :
             print("\n--->", instance_name)
-            nb_req, nb_taxis, all_data, center_val = uf.prepare_data(instance_name, 'panwadee')
+            nb_req, nb_taxis, all_data, center_val = uf.prepare_data(instance_name,
+                                                                     'panwadee')
             #all_data=all_data[:6]
             all_data.req_id= all_data.req_id.astype(int)
             av_taxis = [i for i in range(1, nb_taxis+1)] 
