@@ -202,6 +202,7 @@ def dur_non_profit_trip(matrix_task, data, center_val):
 #                         the values are the pick-up times
 #        * av_taxis     : list of available taxis
 #        * data         : pandas dataframe representing the instance
+#        * center_zone  : zone of the recharging center
 # output : 
 #        * cpu          : cpu time
 #        * cumul_obj_val: the value of the objective-function at the end of the horizon
@@ -213,8 +214,67 @@ def dur_non_profit_trip(matrix_task, data, center_val):
 #        * matrix_task, matrix_start_time, and matrix_fini_time and defined above
 #         (see description of the function "obj_value"  )
 
+# "define_zone" is a function that subdivides the area of demands into smaller zones,
+# such that when the NN heuristic searches for the nearest neighbor, it looks first
+# in the current zone. If no neighbor is found in the zone, it extends the search
+# to the whole area of demands
+# input : 
+#        * data      : pandas dataframe representing the instance
+#        * center_val: [x,y]-coordinates of the recharging center
+#        * n_zone_x  : number of zones along the x-axis
+#        * n_zone_y  : number of zones along the y-axis (the total number of 
+#                      zonses is "n_zone_x*n_zone_y")
+# output : 
+#        * zone_id       : zone identifier (1 to n_zone_x*n_zone_y)
+#        * zone_coord    : [x,y]-coordinates of the lower left point of the zone
+#                          which we consider as the coordinates of the zone
+#        * zone_ori      : the zone of the origin location of a request
+#        * zone_des      : the zone of the destination location of a request
+#        * new_data      : new pandas dataframe with additional columns representing
+#                          the zones of the requests
+#        * center_zone[0]: zone of the recharging center 
 
-def rolling_time_window(heuristic,T_inf,T_sup,window_len,req, av_taxis,data):
+def define_zone(data, center_val, n_zone_x, n_zone_y):
+    x_step     = (2*center_val[0])/n_zone_x
+    y_step     = (2*center_val[1])/n_zone_y
+    new_data   = data.copy()
+    zone_id    = []
+    zone_coord = [] 
+    count      = 0
+    
+    for i in range(n_zone_x):
+        for j in range(n_zone_y):
+            count += 1
+            zone_id.append(count)
+            zone_coord.append([count, (i*x_step, j*y_step)])
+    
+    zone_ori, zone_des = [], []       
+    for i in range(len(new_data)):
+        for count in range(len(zone_coord)):
+            
+            if (new_data.ori_x[i] >= zone_coord[count][1][0]           and
+                new_data.ori_x[i] <  zone_coord[count][1][0] + x_step  and
+                new_data.ori_y[i] >= zone_coord[count][1][1]           and
+                new_data.ori_y[i] <  zone_coord[count][1][1]+ y_step):
+                    zone_ori.append(zone_coord[count][0])
+                    
+            if (new_data.des_x[i] >= zone_coord[count][1][0]           and
+                new_data.des_x[i] <  zone_coord[count][1][0] + x_step  and
+                new_data.des_y[i] >= zone_coord[count][1][1]           and
+                new_data.des_y[i] <  zone_coord[count][1][1]+ y_step):
+                    zone_des.append(zone_coord[count][0])
+                    
+    center_zone = [zone_coord[count][0] for count in range(len(zone_coord))
+                   if (center_val[0] >= zone_coord[count][1][0]           and
+                       center_val[0] <  zone_coord[count][1][0] + x_step  and
+                       center_val[1] >= zone_coord[count][1][1]           and
+                       center_val[1] <  zone_coord[count][1][1]+ y_step)]
+    new_data['zone_ori'] = zone_ori
+    new_data['zone_des'] = zone_des
+            
+    return zone_id, zone_coord, zone_ori, zone_des, new_data, center_zone[0]
+
+def rolling_time_window(heuristic, T_inf, T_sup, window_len, req, av_taxis, data, center_zone):
     av_req, serv_req, unserv_req = {}, {}, {}
     # matrix initializations
     matrix_task       = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
@@ -229,11 +289,16 @@ def rolling_time_window(heuristic,T_inf,T_sup,window_len,req, av_taxis,data):
     for t in range(T_inf, T_sup, window_len):
         av_req.update({i: req[i] for i in req.keys() if  
                   req[i] >= t and req[i] < t+window_len})
+        #print("\n * t = ", t)
 
         serv_req, unserv_req, new_matrix_task, new_matrix_start_time, new_matrix_fini_time, new_battery_level = heuristic(av_req,
-                                                  av_taxis,battery_level,
-                                                  matrix_task,matrix_start_time,
-                                                  matrix_fini_time, data,
+                                                  av_taxis,
+                                                  battery_level,
+                                                  matrix_task,
+                                                  matrix_start_time,
+                                                  matrix_fini_time, 
+                                                  data,
+                                                  center_zone,
                                                   T_sup)
         matrix_task      = new_matrix_task
         matrix_start_time= new_matrix_start_time

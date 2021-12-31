@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 14 14:23:37 2021
+Created on Wed Dec  8 15:07:39 2021
 
 @author: saikli
 """
-
-""" This program implements the NN (Nearest Neighbor) heuristic 
-for the dynamic flying taxis scheduling """
-
 
 #-----      important packages    ------
 import utility_functions as uf
@@ -15,7 +11,7 @@ import statistics
 import math
 #---------------------------------------
 
-# the NN (Nearest Neighbor) heuristic schedules the requests according to their proximity
+# The NN (Nearest Neighbor) heuristic schedules the requests according to their proximity
 # to taxi locations, i.e., the closest requests are the first to be scheduled
 # input : 
 #        * av_req           : dictionary of available requests
@@ -50,7 +46,7 @@ import math
 #        * battery_level     : updates of the battery level
 
 def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
-                 matrix_start_time, matrix_fini_time, data, T_sup):
+                 matrix_start_time, matrix_fini_time, data, center_zone, T_sup):
     
     # create a copy of av_req, because the latter changes in the 
     # For-Loop
@@ -60,7 +56,6 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
     serv_req = {}
     prev_req = 'c'
     for i in range(len(av_req_copy)):
-        #--------------------------------------------------------------------
         # choose the first available taxi
         # i.e., the one whith the smallest fini_time
         temp = [key for key, value in matrix_fini_time.items() if value == []]
@@ -71,52 +66,63 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
         else :
             temp = {key: matrix_fini_time[key][-1] for key in matrix_fini_time.keys()}
             j_taxi = int(min(temp, key=temp.get)[4:])
-            
-        #-----------------------------------------------------------------
-        
-        
-        #-----------------------------------------------------------------
+
         # current taxi location = center (at start)
         if matrix_task['taxi'+str(j_taxi)] == []:
             current_taxi_loc = center_val
+            
+            #--------- NN per zone
+            current_taxi_zone = center_zone
+            #------------------
             #print("current taxi location: ", current_taxi_loc)
         # current taxi location = last request destination
         # (or center location in case of battery charging)
         else:
             last_req = matrix_task['taxi'+str(j_taxi)][-1]
             if last_req== 'b':
-                current_taxi_loc = center_val
-                #print("current taxi location: ",current_taxi_loc)
+                current_taxi_loc  = center_val
+                
+                #--------- NN per zone
+                current_taxi_zone = center_zone
+                #------------------
             else:
                 last_req_data_idx = data.index[data['req_id'] == last_req].tolist()[0]
+                current_taxi_loc  = [data.des_x[last_req_data_idx],data.des_y[last_req_data_idx]]
                 
-                current_taxi_loc = [data.des_x[last_req_data_idx],
-                                    data.des_y[last_req_data_idx]]
-                #print("current taxi location (last req) ", current_taxi_loc)
-
-        # locations of available requests
-        """av_req_loc = {i:[data.ori_x[data.index[data['req_id'] == i].tolist()[0]],
-                         data.ori_y[data.index[data['req_id'] == i].tolist()[0]] ] 
-                         for i in av_req.keys()}
-        
-        # distances between the current taxi and requests locations
-        distances = {i: round(math.sqrt(
-            (av_req_loc[i][0] -
-            current_taxi_loc[0])**2 +
-            (av_req_loc[i][1]-
-             current_taxi_loc[1])**2)
-            , 2) for i in av_req.keys()}"""
-        
-        # distances between the current taxi and requests locations
+                #--------- NN per zone
+                current_taxi_zone = data.zone_des[last_req_data_idx]
+                #------------------
+                
+        # prints
+        """print("\n j_taxi = ", j_taxi,
+              " taxi loc = ", current_taxi_loc,
+              " taxi zone = ", current_taxi_zone)"""
+        """for i in av_req.keys():
+            print(" current i zone = ", 
+                  data.zone_ori[data.index[data['req_id'] == i].tolist()[0]],
+                  " x = ", data.ori_x[data.index[data['req_id'] == i].tolist()[0]] ,
+                  " y = ", data.ori_y[data.index[data['req_id'] == i].tolist()[0]])"""
+        #--------- NN per zone
+        # distances between the current taxi and requests location 
+        # that belong to the same zone
         distances = {i: round(math.sqrt(
             (data.ori_x[data.index[data['req_id'] == i].tolist()[0] ]-current_taxi_loc[0])**2 +
-            (data.ori_y[data.index[data['req_id'] == i].tolist()[0]]-current_taxi_loc[1])**2)
-             , 2) for i in av_req.keys()}
+            (data.ori_y[data.index[data['req_id'] == i].tolist()[0]]-current_taxi_loc[1])**2), 2) 
+            for i in av_req.keys()
+            if data.zone_ori[data.index[data['req_id'] == i].tolist()[0]] == current_taxi_zone}
+        
+        if distances == {}:
+             distances = {i: round(math.sqrt(
+            (data.ori_x[data.index[data['req_id'] == i].tolist()[0] ]-current_taxi_loc[0])**2 +
+            (data.ori_y[data.index[data['req_id'] == i].tolist()[0]]-current_taxi_loc[1])**2), 2) 
+            for i in av_req.keys()}
+        #print("\n * distances keys : ", distances.keys())
+        #------------------
         
         i_req = min(distances, key=distances.get)
         i_req_data_idx = data.index[data['req_id'] == i_req].tolist()[0]
         dur_prep = uf.cal_dur_move_time(center_val, data, i_req_data_idx, -1)
-        #-----------------------------------------------------------------
+
         
         prev_fini_time = 0
         if (len(matrix_task["taxi"+str(j_taxi)]) != 0):
@@ -220,24 +226,25 @@ if __name__ == "__main__":
     T_inf, T_sup = 0, 1440 # start and end times (respectively) 
                            # of the day (in minutes) : 1440 = 24h
                            # the scheduling horizon T=[0, 1440]                  
-    
-    window_lengths = [60]#, 90, 180, 240, 360, 480, 720, 840, 1440] 
 
-    instances = ["new_instances/instance50_2.txt","new_instances/instance100_3.txt","new_instances/instance100_5.txt",
-             "new_instances/instance250_5.txt","new_instances/instance250_10.txt","new_instances/instance500_4.txt",
-             "new_instances/instance500_10.txt","new_instances/instance1000_9.txt","new_instances/instance1000_15.txt",
-             "new_instances/instance10000_20.txt"]
+
+    instances = ["new_instances/instance50_2.txt","new_instances/instance100_3.txt",
+                 "new_instances/instance100_5.txt","new_instances/instance250_5.txt",
+                 "new_instances/instance250_10.txt","new_instances/instance500_4.txt",
+                 "new_instances/instance500_10.txt","new_instances/instance1000_9.txt",
+                 "new_instances/instance1000_15.txt","new_instances/instance10000_20.txt"]
 
     nn_avg_unserv = []
     nn_avg_obj    = []
     nn_avg_profit = []
     nn_avg_cpu    = []
     
-    instances = ["new_instances/instance50_2.txt",
-                 "new_instances/instance100_3.txt",
-                 "new_instances/instance100_5.txt",
-                 "new_instances/instance250_5.txt"]
+    instances = ["new_instances/instance50_2.txt","new_instances/instance100_3.txt",
+                 "new_instances/instance100_5.txt","new_instances/instance250_5.txt",
+                 "new_instances/instance250_10.txt","new_instances/instance500_4.txt",
+                 "new_instances/instance500_10.txt"]
     
+    window_lengths = [60]#, 180, 360, 720, 1440] 
     for window_len in window_lengths:
         print("\n\n________________  window_len =  ", window_len,"________________")
         argument = 'w+'
@@ -251,8 +258,17 @@ if __name__ == "__main__":
             # loading data from Panwadee's data generator
             nb_req, nb_taxis, data, center_val = uf.prepare_data(instance_name, 
                                                                  instance_orig = 'sana')
-            #data=data[1:20]
+            #data=data[:20]
             data.req_id= data.req_id.astype(int)
+            
+            #----------------------------------------------------------------
+            # data with zones
+            n_zone_x, n_zone_y = 4, 5
+            zone_id, zone_coord, zone_ori, zone_des, data, center_zone = uf.define_zone(data,
+                                                                                     center_val,
+                                                                                     n_zone_x,
+                                                                                     n_zone_y)
+            #----------------------------------------------------------------
         
             # all (known) requests and their pick-up times
             # in the begining of the scheduling horizon
@@ -266,7 +282,8 @@ if __name__ == "__main__":
                                                                                                                         T_inf,T_sup,
                                                                                                                         window_len,
                                                                                                                         req, av_taxis,
-                                                                                                                        data)
+                                                                                                                        data,
+                                                                                                                        center_zone)
             #-------------------------------------------------------------
             # cProfile to analyze the code
             """import cProfile
@@ -303,15 +320,14 @@ if __name__ == "__main__":
                 f.write("\n* cpu time : "+str(nn_cpu))
             argument = 'a'
             #print("\nmatrix task : ", nn_matrix_task)
-            print("\n* objective value : ", round(nn_cumul_obj_val,2),
-                  " (total service time)")
+            print("\n* objective value : ", round(nn_cumul_obj_val,2)," (total service time)")
             print("* cpu : ", round(nn_cpu,4))
             print("* percentage of unserved requests : ", 
                   round((len(nn_unserv_req)/len(data))*100, 2), " %") 
         
         
             #-----------------------------------------------------------------
-            """Instance statistics """
+            #Instance statistics 
             nn_total_peak_morning = data.loc[data.pick_t.between(360,600),
                                           'pick_t'].count()
             nn_ave_morning = round(nn_total_peak_morning/6,2)
@@ -329,9 +345,9 @@ if __name__ == "__main__":
         nn_avg_cpu.append(round(statistics.mean(nn_cpus),2))
         
     print("\n\n--> nn_avg_unserv : ", nn_avg_unserv)
-    print("\n-->  nn_avg_obj : "     , nn_avg_obj,)
-    print("\n-->  nn_avg_profit : "  , nn_avg_profit)
-    print("\n-->  nn_avg_cpu : "     , nn_avg_cpu)
+    print("--> nn_avg_obj : "     , nn_avg_obj,)
+    print("--> nn_avg_profit : "  , nn_avg_profit)
+    print("--> nn_avg_cpu : "     , nn_avg_cpu)
     
 
         

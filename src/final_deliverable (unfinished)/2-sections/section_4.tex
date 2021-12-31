@@ -1,0 +1,71 @@
+% Section 4
+
+\section{Computational results and discussion}
+\label{sec:results}
+
+This section reports the computational results of implementing the above-mentioned heuristics, integrated in the \acs{RH} approach. All experiments are run on a computer under Windows operating system, processor Intel(R) Core(TM) i5-10310U with 8 GB of RAM. 
+
+In section~\ref{subsec:instances}, we introduce new data-sets of instances that were generated based on~\cite{panwadee2021}. Our new instances are however more congested and feature more realistic aspect of the problem. Then, in Section~\ref{subsec:results-discussion} we present computational results of implementing our two heuristics \acs{FCFS} and \acs{NN}, and the \acs{GA} of~\cite{panwadee2021}, all integrated in a \acs{RH} approach.
+
+
+\subsection{New generated instances}
+\label{subsec:instances}
+
+We randomly generate $10$ test instances, based on the instance generator of~\cite{panwadee2021}. In addiction to being more congested, our instances define a time window for each request during which it can be served, which is more realistic that imposing a strict pick-up time.
+
+Table~\ref{tab:instances} summarizes some important characteristics of our generated instances. Throughout this table, the first, second and third columns present the name, the total number of requests, and the total number of air taxis in each instance (respectively). The fourth column \og req/h\fg  reports the average request per hour in each instance, which measures how dense the latter is. The remaining columns show the minimum, average, and the maximum duration of request trips in an instance. 
+
+\begin{table}[ht]
+	\resizebox{0.99\linewidth}{!}{%
+		\begin{tabular}{p{3cm}rrrp{2cm}p{1.2cm}p{1.2cm}}
+			\toprule
+			Instance name &  \#\newline req & \#\newline taxis & req/h &
+			min\newline duration & average\newline duration &
+			max\newline duration \\
+			\midrule
+			\texttt{instance50\_2}    &50   &2 &2.08  &12.75& 27.12& 49.07\\
+			\texttt{instance100\_3}   &100  &3 &4.17  &11.00& 26.8 & 48.57\\
+			\texttt{instance100\_5}   &100  &5 &4.17  &11.71& 26.75& 51.37\\
+			\texttt{instance250\_5}   &250  &5 &10.42 &10.42& 27.7 & 47.48\\
+			\texttt{instance250\_10}  &250  &10&10.42 &10.42& 27.70& 49.48\\
+			\texttt{instance500\_4}   &500  &4 &20.83 &10.51& 26.57& 47.85\\
+			\texttt{instance500\_10}  &500  &10&20.83 &10.48& 27.26& 49.15\\
+			\texttt{instance1000\_9}  &1000 &9 &41.67 &10.33& 26.96& 49.74\\
+			\texttt{instance1000\_15} &1000 &15&41.67 &10.49& 27.16& 49.35\\
+			\texttt{instance10000\_20}&10000&20&416.66&10.16& 27.01& 52.85\\
+			\bottomrule
+		\end{tabular} 
+	}
+	\caption{Characteristics of the new constructed instances.}
+	\label{tab:instances}
+\end{table}
+
+The data included in our instances contain the request identifier, the origin and destination locations of the requests and their pick-up times. Moreover, we define for each request a time window in which it can be served. The time window is defined by an earliest and a latest serving time, centered around the pick-up time.  
+
+
+\subsection{Results and discussion}
+\label{subsec:results-discussion}
+
+To compare the quality of the solutions provided by the above-mentioned heuristics, we define the following performance indicators:
+\begin{itemize}
+	\item The \textbf{objective-value} that indicates the total service time (in minutes). In an optimization approach, this objective is maximized.
+	
+	\item The \textbf{non-profitable trips} duration that corresponds to the total travel time without passengers. This may occur when a taxi flies to the center to recharge its battery, or between two requests. In an optimization approach, this indicator should be minimized. 
+
+	\item The \textbf{CPU} time that indicates the computation times in seconds. The characteristics of the computer on which the experiments were run are provided at the beginning of Section~\ref{sec:results}.
+\end{itemize}
+
+Figure(reference here) shows...
+
+
+
+
+
+
+
+
+
+
+
+
+

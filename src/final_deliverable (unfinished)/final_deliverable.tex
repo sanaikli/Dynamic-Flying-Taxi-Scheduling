@@ -1,0 +1,57 @@
+% Main file
+
+\documentclass[a4paper,11pt]{article}   % list options between brackets
+\usepackage[style=numeric,backend=bibtex]{biblatex}
+\addbibresource{references.bib}
+% Include configuration (loading packages, defining the style of the document...)
+\include{0-configuration/packages}
+
+% Include user's macros
+\include{0-configuration/macros}
+
+
+
+\begin{document}
+	% Include the title pages
+	\include{1-opening/titlepage}
+	
+
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%%% Sections are included here 
+	%%%%%%%%%%%%%%%%%%%%%%%%%%
+	\input{2-sections/section_1}
+	
+	\input{2-sections/section_2}
+	
+	\input{2-sections/section_3}
+	
+	\input{2-sections/section_4}
+	
+	\input{2-sections/section_5}
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%%% Referenvces are included here 
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	\clearpage
+	\printbibliography
+	
+	
+	
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%%% Appendices are included here 
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	\clearpage
+	\appendix
+	%\let\clearpage\relax
+	%\mbox{~}
+	\include{3-appendices/appendix_1}
+	
+	
+	
+	
+	
+\end{document}
+
+

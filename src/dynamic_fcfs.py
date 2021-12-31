@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 Created on Wed Oct  6 14:41:22 2021
@@ -22,39 +23,30 @@ import operator
 # the FCFS (First-Come, Firs-Served) heuristic schedules the requests according 
 # to requests start time, i.e., the realiest requests are the first to be scheduled
 # input : 
-#        * av_req           : dictionary of available requests
-#                             the keys represent the requests index
-#                             the values are the pick-up times
-#        * av_taxis         : list of available taxis
-#        * battery_level    : list for battery level of each taxi
-#        * matrix_task      : a python dictionary representing the tasks of each taxi
-#                             the key represents the taxi
-#                             the values are a list of tasks for the taxi
-#        * matrix_start_time: a python dictionary representing the start time
-#                             of each task.
-#                             the key represents the taxi
-#                             the values are a list of starting time of each task
-#        * matrix_fini_time  : a python dictionary representing the finishing time
-#                              of each task.
-#                              the key represents the taxi
-#                              the values are a list of finishing time of the request
-#        * data              : pandas dataframe representing the instance
-#        * T_sup             : upper value of the scheduling horizon (1440 minutes)
+#        * av_req        : dictionary of available requests
+#                          the keys represent the requests index
+#                          the values are the pick-up times
+#        * av_taxis      : list of available taxis
+#        * battery_level : list for battery level of each taxi
+#        * m_task        : a python dictionary representing the tasks of each taxi
+#                          the key represents the taxi
+#                          the values are a list of tasks for the taxi
+#        * ma_st         : a python dictionary representing the start time of each task.
+#                          The key represents the taxi, and the values are a list
+#                          of starting time of each task
+#        * m_ft          : a python dictionary representing the finishing time of each task.
+#        * data          : pandas dataframe representing the instance
+#        * T_sup         : upper value of the scheduling horizon (1440 minutes)
 # output : 
-#        * serv_req          : dictionary of served requests
-#                              the keys represent the requests index
-#                              the values are the serve times (pick-up time
-#        * unserv_req        : dictionary of unserved requests
-#                              the keys represent the requests index
-#                              the values are the pick-up times
-#                              or a time inside the request interval)
-#        * matrix_task       : the previous matrix_start_time with updates
-#        * matrix_start_time : the previous matrix_task with updates
-#        * matrix_fini_time  : the previous matrix_fini_time with updates
-#        * battery_level     : updates of the battery level
-
-def fcfs_heuristic(av_req, av_taxis, battery_level, matrix_task,
-         matrix_start_time, matrix_fini_time, data, T_sup):
+#        * serv_req      : list of served requests
+#        * unserv_req    : dictionary of unserved requests
+#                          the keys represent the requests index, and the values are 
+#                          the pick-up timesr a time inside the request interval)
+#        * m_task        : the previous matrix_start_time with updates
+#        * m_st          : the previous matrix_task with updates
+#        * m_ft          : the previous matrix_fini_time with updates
+#        * battery_level : updates of the battery level
+def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, center_zone, T_sup):
     
     # sorting requests according to earliest pickup time (fcfs fashion)
     av_req = dict(sorted(av_req.items(), key=operator.itemgetter(1)))
@@ -72,25 +64,24 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, matrix_task,
         
         #--------------------------------------------------------------------
         # choose the first available taxi
-        temp = [key for key, value in matrix_fini_time.items() if value == []]
+        temp = [key for key, value in m_ft.items() if value == []]
         if temp != []:
             taxi   = temp[0]
             j_taxi = int(taxi[4:])
             temp.remove(taxi)
         else :
-            temp = {key: matrix_fini_time[key][-1] for key in matrix_fini_time.keys()}
+            temp = {key: m_ft[key][-1] for key in m_ft.keys()}
             j_taxi = int(min(temp, key=temp.get)[4:])
         #-----------------------------------------------------------------
         
         prev_fini_time = 0
-        if (len(matrix_task["taxi"+str(j_taxi)]) != 0):
-            prev_req = matrix_task["taxi"+str(j_taxi)][-1]
+        if (len(m_task["taxi"+str(j_taxi)]) != 0):
+            prev_req = m_task["taxi"+str(j_taxi)][-1]
             if (prev_req != "b"):
-                prev_req_data_idx = data.index[data['req_id'] == 
-                                           prev_req].tolist()[0]
+                prev_req_data_idx = data.index[data['req_id'] == prev_req].tolist()[0]
                 dur_prep = uf.cal_dur_move_time(center_val,data,i_req_data_idx, prev_req_data_idx)
             
-            prev_fini_time = matrix_fini_time["taxi"+str(j_taxi)][-1]
+            prev_fini_time = m_ft["taxi"+str(j_taxi)][-1]
    
         #Check enough time to pick up  
         enough_time_to_pick = False
@@ -109,10 +100,10 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, matrix_task,
         if enough_time_to_pick:
             if enough_battery:
                 if data["pick_t"][i_req_data_idx]+dur_t_req <= T_sup:
-                    matrix_task["taxi"+str(j_taxi)].append(i_req)
-                    matrix_start_time["taxi"+str(j_taxi)].append(data["pick_t"][i_req_data_idx])
+                    m_task["taxi"+str(j_taxi)].append(i_req)
+                    m_st["taxi"+str(j_taxi)].append(data["pick_t"][i_req_data_idx])
                     
-                    matrix_fini_time["taxi"+str(j_taxi)].append(round((data["pick_t"][i_req_data_idx]+dur_t_req), 2))
+                    m_ft["taxi"+str(j_taxi)].append(round((data["pick_t"][i_req_data_idx]+dur_t_req), 2))
                     
                     battery_level[j_taxi-1] = round(
                         battery_level[j_taxi-1] - uf.bcr*(dur_prep+dur_t_req),
@@ -123,14 +114,14 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, matrix_task,
                     del av_req[i_req]
 
             else: # charge battery if battery level is not enough
-                matrix_task["taxi"+str(j_taxi)].append("b")
+                m_task["taxi"+str(j_taxi)].append("b")
                 dur_prev_to_center = uf.cal_dur_back_to_center(prev_req_data_idx,center_val,data)
-                matrix_start_time["taxi"+str(j_taxi)].append(prev_fini_time + dur_prev_to_center)
-                matrix_fini_time["taxi"+str(j_taxi)].append(prev_fini_time + dur_prev_to_center + uf.R)
+                m_st["taxi"+str(j_taxi)].append(prev_fini_time + dur_prev_to_center)
+                m_ft["taxi"+str(j_taxi)].append(prev_fini_time + dur_prev_to_center + uf.R)
                 battery_level[j_taxi-1] = 100
         
                 dur_prep1 = uf.cal_dur_move_time(center_val,data,i_req_data_idx)
-                prev_fini_time1 = matrix_fini_time["taxi"+str(j_taxi)][-1]
+                prev_fini_time1 = m_ft["taxi"+str(j_taxi)][-1]
 
                 #----------------------------------------------------------
                 # check if it's possible to serve in the time interval [early_t, late_t]
@@ -141,13 +132,12 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, matrix_task,
                     (battery_level[j_taxi-1] - uf.bcr*(dur_prep1+dur_t_req+dur_back_center) >= 
                      uf.b_min)):
                     if data["pick_t"][i_req_data_idx]+dur_t_req <= T_sup:
-                        matrix_task["taxi"+str(j_taxi)].append(i_req)
+                        m_task["taxi"+str(j_taxi)].append(i_req)
                         # new pick_t: serve the requests as soon as the taxi 
                         # finiches its previous task
                         i_req_new_pick_time = round(prev_fini_time1+dur_prep1, 2)
-                        matrix_start_time["taxi"+str(j_taxi)].append(i_req_new_pick_time)
-                        matrix_fini_time["taxi"+str(j_taxi)].append(round((i_req_new_pick_time+
-                                                                           dur_t_req), 2))
+                        m_st["taxi"+str(j_taxi)].append(i_req_new_pick_time)
+                        m_ft["taxi"+str(j_taxi)].append(round((i_req_new_pick_time+dur_t_req), 2))
                         battery_level[j_taxi-1] = round(battery_level[j_taxi-1] - uf.bcr*(dur_prep1+
                                                                                        dur_t_req), 2)
                         # remove the assigned demand from av_req
@@ -164,10 +154,9 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, matrix_task,
                         # finiches its previous task
                         i_req_new_pick_time = round(prev_fini_time+dur_prep, 2)
                         if i_req_new_pick_time+dur_t_req <= T_sup:
-                            matrix_task["taxi"+str(j_taxi)].append(i_req)
-                            matrix_start_time["taxi"+str(j_taxi)].append(i_req_new_pick_time)
-                            matrix_fini_time["taxi"+str(j_taxi)].append(round((i_req_new_pick_time+
-                                                                           dur_t_req), 2))
+                            m_task["taxi"+str(j_taxi)].append(i_req)
+                            m_st["taxi"+str(j_taxi)].append(i_req_new_pick_time)
+                            m_ft["taxi"+str(j_taxi)].append(round((i_req_new_pick_time+dur_t_req), 2))
                             battery_level[j_taxi-1] = round(battery_level[j_taxi-1] - 
                                                             uf.bcr*(dur_prep+dur_t_req), 2)
                             
@@ -175,7 +164,7 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, matrix_task,
                             del av_req[i_req] # remove the assigned demand from av_req
 
     unserv_req = av_req #update unserved demands
-    return serv_req, unserv_req, matrix_task, matrix_start_time, matrix_fini_time, battery_level
+    return serv_req, unserv_req, m_task, m_st, m_ft, battery_level
 
                
 
@@ -188,7 +177,7 @@ if __name__ == "__main__":
                            # of the day (in minutes) : 1440 = 24h
                            # the scheduling horizon T=[0, 1440]                  
     
-    window_lengths = [720]#, 90, 180, 240, 360, 480, 720, 840, 1440] 
+    window_lengths = [480, 540, 720, 1440]#, 90, 180, 240, 360, 480, 720, 840, 1440] 
 
     instances = ["new_instances/instance50_2.txt","new_instances/instance100_3.txt","new_instances/instance100_5.txt",
              "new_instances/instance250_5.txt","new_instances/instance250_10.txt","new_instances/instance500_4.txt",
@@ -224,40 +213,31 @@ if __name__ == "__main__":
         
             # available taxis in the begining of the scheduling horizon
             av_taxis = [i for i in range(1, nb_taxis+1)] 
+            
+            #----------------------------------------------------------------
+            # data with zones
+            n_zone_x, n_zone_y = 1, 1
+            zone_id, zone_coord, zone_ori, zone_des, data, center_zone = uf.define_zone(data,
+                                                                                     center_val,
+                                                                                     n_zone_x,
+                                                                                     n_zone_y)
+            #----------------------------------------------------------------
 
             # rolling_time_window call with FCFS heuristic
-            fcfs_cpu, fcfs_cumul_obj_val, fcfs_serv_req, fcfs_unserv_req, fcfs_matrix_task, fcfs_matrix_start_time, fcfs_matrix_fini_time= uf.rolling_time_window(fcfs_heuristic,
+            fcfs_cpu, fcfs_cumul_obj_val, fcfs_serv_req, fcfs_unserv_req, fcfs_m_task, fcfs_m_st, fcfs_m_ft= uf.rolling_time_window(fcfs_heuristic,
                                                                                                                         T_inf,T_sup,
                                                                                                                         window_len,
                                                                                                                         req, av_taxis,
-                                                                                                                        data)
+                                                                                                                        data,
+                                                                                                                        center_zone)
             fcfs_obj_values.append(round(fcfs_cumul_obj_val,2))
-            fcfs_non_profit.append(round(uf.dur_non_profit_trip(fcfs_matrix_task,
-                                                                data, center_val),2))
+            fcfs_non_profit.append(round(uf.dur_non_profit_trip(fcfs_m_task,data, center_val),2))
             fcfs_cpus.append(fcfs_cpu)
             fcfs_unserv_perc.append(round(len(fcfs_unserv_req)/len(data),2)*100)
-        
-            # save results in ".txt" file named 
-            # "results_<dynamic/static>_fcfs.txt
-            """if window_len == 1440:
-                file_name = "results_fcfs_static.txt"
-            else:
-                file_name = "results_fcfs_rh.txt"
-            with open(file_name, argument) as f:
-                f.write("\n\n\n--------\t"+ str(instance_name)+"\t--------")
-                f.write("\n* matrix_task : "+str(fcfs_matrix_task))
-                f.write("\n* unserved req : "+str(fcfs_unserv_req))
-                f.write("\n* objective value : "+str(round(fcfs_cumul_obj_val,2)))
-                f.write("\n* cpu time : "+str(fcfs_cpu))
-            argument = 'a' """
+            print("\n--> fcfs_cpus : "        , fcfs_cpus)
+            print("--> fcfs_obj_values : "  , fcfs_obj_values)
+            print("--> fcfs_unserv_perc : " , fcfs_unserv_perc)
             
-            #print("\nmatrix task : ", fcfs_matrix_task)
-            print("\n* objective value : ", round(fcfs_cumul_obj_val,2),
-                  " (total service time)")
-            print("* cpu : ", round(fcfs_cpu,4))
-            print("* percentage of unserved requests : ", 
-                  round(len(fcfs_unserv_req)/len(data),2)*100, " %") 
-        
         
             #-----------------------------------------------------------------
             """Instance statistics """
@@ -277,10 +257,10 @@ if __name__ == "__main__":
         fcfs_avg_profit.append(round(statistics.mean(fcfs_non_profit),2))
         fcfs_avg_cpu.append(round(statistics.mean(fcfs_cpus),2))
         
+        
     print("\n\n--> fcfs_avg_unserv : ", fcfs_avg_unserv)
-    print("\n-->  fcfs_avg_obj : "     , fcfs_avg_obj,)
-    print("\n-->  fcfs_avg_profit : "  , fcfs_avg_profit)
-    print("\n-->  fcfs_avg_cpu : "     , fcfs_avg_cpu)
+    print("-->  fcfs_avg_obj : "     , fcfs_avg_obj,)
+    print("-->  fcfs_avg_cpu : "     , fcfs_avg_cpu)
         
         
         
