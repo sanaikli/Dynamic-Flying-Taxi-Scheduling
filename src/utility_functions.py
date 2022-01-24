@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" This file contains the implementation of important functions that are recurently
+""" This file contains the implementation of important functions that are recurrently
 called when implementing a taxi scheduling algorithm (FCFS, NN or GA)
 - FCFS: First-Come, First-Served
 - NN:   Nearest Neighbor
@@ -11,19 +11,19 @@ __date__ = '10/27/2021'
 __author__ = 'saikli'
 
 
-#-----      important packages    ------
+# -----      important packages    ------
 import pandas as pd
 import math
 import time
-#---------------------------------------
+# ---------------------------------------
 
 # Constant values of the problem (from Panwadee's GA2)
-v_fly  = 50   # in km/h
-bcr    = 0.67 # battery consumption rate in %/minute
-s_need = 5    # take-off and landing time in minutes
-b_min  = 5    # minimum reamaining battery level in %
-R      = 60   # battery recharging time to full in minutes
-T      = 1440 # available operating time in minutes
+v_fly = 50  # in km/h
+bcr = 0.67  # battery consumption rate in %/minute
+s_need = 5  # take-off and landing time in minutes
+b_min = 5  # minimum remaining battery level in %
+R = 60  # battery recharging time to full in minutes
+T = 1440  # available operating time in minutes
 
 
 def prepare_data(file_instance, instance_orig):
@@ -54,21 +54,23 @@ def prepare_data(file_instance, instance_orig):
             matrix.append(value)
 
     if instance_orig == "sana":
-        data = pd.DataFrame(matrix, columns=['req_id','ori_x','ori_y','des_x',
-                                             'des_y','early_t','pick_t','late_t',
-                                             'dist_t','dur_t'])
+        data = pd.DataFrame(matrix, columns=['req_id', 'ori_x', 'ori_y', 'des_x',
+                                             'des_y', 'early_t', 'pick_t', 'late_t',
+                                             'dist_t', 'dur_t'])
 
-    if instance_orig == "panwadee":
-        data = pd.DataFrame(matrix, columns=['req_id','ori_x','ori_y','des_x','des_y','pick_t'])
-        #Compute duration time from origin to destination + takeoff and landing time
-        data['dist'] = data.apply(lambda x: round(math.sqrt((x['ori_x']-x['des_x'])**2 + (x['ori_y']-x['des_y'])**2),2), axis=1)
-        data['dur_t'] = data.apply(lambda x: round(x['dist']/(v_fly*1000/60)+2*s_need,2), axis=1)
-        #data['early_t'] = data.apply(lambda x: x['pick_t'], axis=1)
-        #data['late_t'] = data.apply(lambda x: x['pick_t'], axis=1)
+    else:  # instance_orig == "panwadee"
+        data = pd.DataFrame(matrix, columns=['req_id', 'ori_x', 'ori_y', 'des_x', 'des_y', 'pick_t'])
+        # Compute duration time from origin to destination + takeoff and landing time
+        data['dist'] = data.apply(lambda x: round(math.sqrt((x['ori_x']-x['des_x'])**2 + (x['ori_y']-x['des_y'])**2), 2),
+                                  axis=1)
+        data['dur_t'] = data.apply(lambda x: round(x['dist']/(v_fly*1000/60)+2*s_need, 2), axis=1)
+        # data['early_t'] = data.apply(lambda x: x['pick_t'], axis=1)
+        # data['late_t'] = data.apply(lambda x: x['pick_t'], axis=1)
         data['early_t'] = data.apply(lambda x: x['pick_t']-2*x['dur_t'], axis=1)
         data['late_t'] = data.apply(lambda x: x['pick_t']+2*x['dur_t'], axis=1)
     # print(data)
     return nb_req, nb_taxi, data, center_val
+
 
 def cal_dur_move_time(center_val, data, next_ori, prev_des=-1):
     """ Function "cal_dur_move" computes the trip duration between two locations:
@@ -88,9 +90,10 @@ def cal_dur_move_time(center_val, data, next_ori, prev_des=-1):
         x_prev_des = data['des_x'][prev_des]
         y_prev_des = data['des_y'][prev_des]
     dist_move = round(math.sqrt((data['ori_x'][next_ori]-x_prev_des)**2 +
-                                (data['ori_y'][next_ori]-y_prev_des)**2),2)
-    move_t = round(dist_move/(v_fly*1000/60),2) + 2*s_need
+                                (data['ori_y'][next_ori]-y_prev_des)**2), 2)
+    move_t = round(dist_move/(v_fly*1000/60), 2) + 2*s_need
     return move_t
+
 
 def cal_dur_back_to_center(req_test, center_val, data):
     """Function "cal_dur_back_to_center" computes the trip duration from the current request
@@ -103,12 +106,13 @@ def cal_dur_back_to_center(req_test, center_val, data):
            * back_t    : trip duration in minutes to go back to center.
     """
     dist_back = round(math.sqrt((data['des_x'][req_test]-center_val[0])**2 +
-                                (data['des_y'][req_test]-center_val[1])**2),2)
-    back_t = round(dist_back/(v_fly*1000/60),2) + 2*s_need
+                                (data['des_y'][req_test]-center_val[1])**2), 2)
+    back_t = round(dist_back/(v_fly*1000/60), 2) + 2*s_need
     return back_t
 
+
 def obj_value(matrix_task, matrix_start_time,
-            matrix_fini_time, nb_taxis):
+              matrix_fini_time, nb_taxis):
     """ Function "obj_value" computes the value of the objective-function: the cumulative service time
     input :
            * matrix_task      : a python dictionary representing the tasks of each taxi
@@ -134,6 +138,7 @@ def obj_value(matrix_task, matrix_start_time,
                 accumulate_service_time += matrix_fini_time["taxi"+str(j+1)][i] - matrix_start_time["taxi"+str(j+1)][i]
     return accumulate_service_time
 
+
 def dur_non_profit_trip(matrix_task, data, center_val):
     """Function "dur_non_profit_trip" computes the time duration of non-profitable trips,
     such as the trips from the center to the location of a request, the trip between
@@ -143,37 +148,39 @@ def dur_non_profit_trip(matrix_task, data, center_val):
                           the key represents the taxi
                           the values are a list of tasks for the taxi
            * data       : pandas dataframe representing the instance
-           * center_val : [x,y]--coordinates of the center                            the values are a list of finishing time of each task
+           * center_val : [x,y]--coordinates of the center
+           the values are a list of finishing time of each task
     output:
            * dur_t      : the time duration of non-profitable trips
                           according to the distribution of tasks in matrix_task.
     """
     dur_t = 0
     for taxi in matrix_task.keys():
-        taxi_task = [i if i!='b' else -1 for i in matrix_task[taxi] ]
-        for i in range(1,len(taxi_task)):
-            if taxi_task[i]==-1:# check if current request is battery charging
-                i_1_data_idx = data.index[data['req_id'] ==taxi_task[i-1]].tolist()[0]
+        taxi_task = [i if i != 'b' else -1 for i in matrix_task[taxi]]
+        for i in range(1, len(taxi_task)):
+            if taxi_task[i] == -1:  # check if current request is battery charging
+                i_1_data_idx = data.index[data['req_id'] == taxi_task[i-1]].tolist()[0]
                 dur_t += cal_dur_back_to_center(i_1_data_idx, center_val, data)
 
-            elif taxi_task[i-1]==-1:# check if previous request is battery charging
-                i_data_idx = data.index[data['req_id']==taxi_task[i]].tolist()[0]
-                dur_t += cal_dur_move_time(center_val, data,i_data_idx)
+            elif taxi_task[i-1] == -1:  # check if previous request is battery charging
+                i_data_idx = data.index[data['req_id'] == taxi_task[i]].tolist()[0]
+                dur_t += cal_dur_move_time(center_val, data, i_data_idx)
 
             else:
-                i_data_idx = data.index[data['req_id']==taxi_task[i]].tolist()[0]
-                i_1_data_idx = data.index[data['req_id']==taxi_task[i-1]].tolist()[0]
+                i_data_idx = data.index[data['req_id'] == taxi_task[i]].tolist()[0]
+                i_1_data_idx = data.index[data['req_id'] == taxi_task[i-1]].tolist()[0]
                 dur_t += cal_dur_move_time(center_val, data,
-                                     i_data_idx,i_1_data_idx)
-        if taxi_task != []:
+                                           i_data_idx, i_1_data_idx)
+        if taxi_task:
             first_elem = data.index[data['req_id'] == taxi_task[0]].tolist()[0]
-            dur_t += cal_dur_move_time(center_val,data, first_elem)
+            dur_t += cal_dur_move_time(center_val, data, first_elem)
 
-            if taxi_task[-1] !=-1:
+            if taxi_task[-1] != -1:
                 last_elem = data.index[data['req_id'] == taxi_task[-1]].tolist()[0]
                 dur_t += cal_dur_back_to_center(last_elem, center_val, data)
 
     return dur_t
+
 
 def define_zone(data, center_val, n_zone_x, n_zone_y):
     """Function "define_zone" is a function that subdivides the area of demands into smaller zones,
@@ -196,12 +203,12 @@ def define_zone(data, center_val, n_zone_x, n_zone_y):
                              the zones of the requests
            * center_zone[0]: zone of the recharging center.
     """
-    x_step     = (2*center_val[0])/n_zone_x
-    y_step     = (2*center_val[1])/n_zone_y
-    new_data   = data.copy()
-    zone_id    = []
+    x_step = (2*center_val[0])/n_zone_x
+    y_step = (2*center_val[1])/n_zone_y
+    new_data = data.copy()
+    zone_id = []
     zone_coord = []
-    count      = 0
+    count = 0
 
     for i in range(n_zone_x):
         for j in range(n_zone_y):
@@ -213,15 +220,15 @@ def define_zone(data, center_val, n_zone_x, n_zone_y):
     for i in range(len(new_data)):
         for count in range(len(zone_coord)):
 
-            if (zone_coord[count][1][0] + x_step > new_data.ori_x[i] >= zone_coord[count][1][0] and \
-                    zone_coord[count][1][1]+ y_step > new_data.ori_y[i] >= zone_coord[count][1][1]):
+            if (zone_coord[count][1][0] + x_step > new_data.ori_x[i] >= zone_coord[count][1][0] and
+                    zone_coord[count][1][1] + y_step > new_data.ori_y[i] >= zone_coord[count][1][1]):
                 zone_ori.append(zone_coord[count][0])
 
-            if (zone_coord[count][1][0] + x_step > new_data.des_x[i] >= zone_coord[count][1][0] and \
-                    zone_coord[count][1][1]+ y_step > new_data.des_y[i] >= zone_coord[count][1][1]):
+            if (zone_coord[count][1][0] + x_step > new_data.des_x[i] >= zone_coord[count][1][0] and
+                    zone_coord[count][1][1] + y_step > new_data.des_y[i] >= zone_coord[count][1][1]):
                 zone_des.append(zone_coord[count][0])
 
-    center_zone = [zone_coord[count][0] for count in range(len(zone_coord))
+    center_zone = [zone_coord[count][0] for count in range(len(zone_coord))]
     #                if (zone_coord[count][1][0] + x_step > center_val[0] >= zone_coord[count][1][0] and \
     #                    zone_coord[count][1][1]+ y_step > center_val[1] >= zone_coord[count][1][1])]
     new_data['zone_ori'] = zone_ori
@@ -229,17 +236,18 @@ def define_zone(data, center_val, n_zone_x, n_zone_y):
 
     return zone_id, zone_coord, zone_ori, zone_des, new_data, center_zone[0]
 
-def rolling_time_window(heuristic, T_inf, T_sup, window_len, req, av_taxis, data, center_zone):
+
+def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, av_taxis, data, center_zone):
     """Function "rolling_time_window" is a function that implements the rolling-horizon approach
-    with rolling time windows. It shcedules the requests inside the first window using
+    with rolling time windows. It schedules the requests inside the first window using
     the scheduling method "heuristic". then, it moves the unserved requests to the next
     window and schedules them with the new requests ; this process continues
     until reaching the last time window
     input :
            * heuristic    : the scheduling heuristic (FCFS, NN or GA)
 
-           * T_inf, T_sup : upper and lower bounds on the scheduling horizon
-                            [T_inf, T_sup] = [0, 1440](24 hours for example)
+           * t_inf, t_sup : upper and lower bounds on the scheduling horizon
+                            [t_inf, t_sup] = [0, 1440](24 hours for example)
            * window_len   : length of the (rolling) time window
            * req          : dictionary of available requests
                             the keys represent the requests index
@@ -260,19 +268,18 @@ def rolling_time_window(heuristic, T_inf, T_sup, window_len, req, av_taxis, data
     """
     av_req, serv_req, unserv_req = {}, {}, {}
     # matrix initializations
-    matrix_task       = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
+    matrix_task = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
     matrix_start_time = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
-    matrix_fini_time  = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
+    matrix_fini_time = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
 
     # battery level initialization
     nb_taxis = len(av_taxis)
-    battery_level = [100]*nb_taxis # (100% for all av_taxis)
+    battery_level = [100]*nb_taxis  # (100% for all av_taxis)
 
-    t_i = time.time() # initial time (to compute the cpu time)
-    for t in range(T_inf, T_sup, window_len):
-        av_req.update({i: req[i] for i in req.keys() if
-                  req[i] >= t and req[i] < t+window_len})
-        #print("\n * t = ", t)
+    t_i = time.time()  # initial time (to compute the cpu time)
+    for t in range(t_inf, t_sup, window_len):
+        av_req.update({i: req[i] for i in req.keys() if t+window_len > req[i] >= t})
+        # print("\n * t = ", t)
 
         serv_req, unserv_req, new_matrix_task, new_matrix_start_time, new_matrix_fini_time, new_battery_level = heuristic(av_req,
                                                   av_taxis,
@@ -282,29 +289,29 @@ def rolling_time_window(heuristic, T_inf, T_sup, window_len, req, av_taxis, data
                                                   matrix_fini_time,
                                                   data,
                                                   center_zone,
-                                                  T_sup)
-        matrix_task      = new_matrix_task
-        matrix_start_time= new_matrix_start_time
+                                                  t_sup)
+        matrix_task = new_matrix_task
+        matrix_start_time = new_matrix_start_time
         matrix_fini_time = new_matrix_fini_time
 
         # move unserved requests from previous window to the start of current window
         for i_req in unserv_req.keys():
             i_req_data_idx = data.index[data['req_id'] == i_req].tolist()[0]
-            if unserv_req[i_req]>=t and unserv_req[i_req]<t+window_len:
+            if t+window_len > unserv_req[i_req] >= t:
                 unserv_req[i_req] = t+window_len
-                data.at[i_req_data_idx,'pick_t'] = av_req[i_req]
+                data.at[i_req_data_idx, 'pick_t'] = av_req[i_req]
 
         # update av_req with unserved requests from previous window
-        av_req = {i:v for i,v in av_req.items() if i not in serv_req}
+        av_req = {i: v for i, v in av_req.items() if i not in serv_req}
         av_req.update(unserv_req)
         serv_req.update(serv_req)
 
         # battery level updates
         battery_level = new_battery_level
 
-    t_f = time.time()         # final time
-    cpu = round(t_f - t_i, 4) # cpu calculation
+    t_f = time.time()  # final time
+    cpu = round(t_f - t_i, 4)  # cpu calculation
 
     # final objective-value
-    cumul_obj_val = obj_value(matrix_task,matrix_start_time,matrix_fini_time, nb_taxis)
+    cumul_obj_val = obj_value(matrix_task, matrix_start_time, matrix_fini_time, nb_taxis)
     return cpu, cumul_obj_val, serv_req, unserv_req, matrix_task, matrix_start_time, matrix_fini_time
