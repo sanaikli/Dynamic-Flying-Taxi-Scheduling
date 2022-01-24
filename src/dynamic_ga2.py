@@ -10,14 +10,15 @@ __author__ = 'saikli'
 # -----      important packages    ------
 import utility_functions as uf
 import numpy as np
-import cProfile
-import pstats
+# import cProfile
+# import pstats
 import random
 import time
 import copy
 import pandas as pd
 
-class DynamicGa2():
+
+class DynamicGa2:
     """Genetic Algorithm (GA)"""
     def __init__(self, window_len, instances, result):
         """Main program for numerical tests
@@ -31,23 +32,22 @@ class DynamicGa2():
             * self.__test_results : results DataFrame
         """
 
-        #creation of results DataFrame
-        test_results = pd.DataFrame(index=np.arange(0,1), columns=['Objective values', '% unserved requests',
-                                                                       'GA CPU time', 'window lengths'])
+        # creation of results DataFrame
+        test_results = pd.DataFrame(index=np.arange(0, 1), columns=['Objective values', '% unserved requests',
+                                                                    'GA CPU time', 'window lengths'])
         self.T_inf, self.T_sup = 0, 1440  # start and end times of the day (in minutes)
 
         print("\n\n__________  window length =  ", window_len, " min _____")
-        argument = 'w+'
+        # argument = 'w+'
         ga_obj_values = []
         ga_non_profit = []
         ga_cpus = []
         ga_unserv_perc = []  # percentage of unserved demands
-        ga_averages_morning, fcfs_averages_evening = [], []
+        # ga_averages_morning, fcfs_averages_evening = [], []
 
         for instance_name in instances:
             print("\n--->", instance_name)
-            nb_req, self.nb_taxis, all_data, center_val = uf.prepare_data(instance_name,
-                                                                     'panwadee')
+            nb_req, self.nb_taxis, all_data, center_val = uf.prepare_data(instance_name, 'panwadee')
             # all_data=all_data[:6]
             all_data.req_id = all_data.req_id.astype(int)
             # av_taxis = [i for i in range(1, self.nb_taxis + 1)]
@@ -78,7 +78,7 @@ class DynamicGa2():
         print("\n\n * Objective values : ", ga_obj_values)
         print(" * Percentage of unserved requests: ", ga_unserv_perc)
         print(" * GA CPU time : ", ga_cpus)
-        #save ga_obj_values, ga_unserv_perc, ga_cpus in test_results DataFrame
+        # save ga_obj_values, ga_unserv_perc, ga_cpus in test_results DataFrame
         if result:
             test_results['Objective values'][0] = ga_obj_values
             test_results['% unserved requests'][0] = ga_unserv_perc
@@ -90,23 +90,23 @@ class DynamicGa2():
         return self.__test_results
 
     def sorting_population(self, arr_pop, arr_res):
-        '''the function "sorting_population" sort a population of chromosomes according to the fitness function
+        """the function "sorting_population" sort a population of chromosomes according to the fitness function
         (value of the objective-function)
             * arr_pop : a python list representing the population (set of chromosomes)
             * arr_res : a python list of the objective-value of the corresponding chromosome
-        output: * sorted population
-        '''
+        output: * sorted population.
+        """
         n = len(arr_pop)
         while n > 1:
             for i in range(n - 1):
-                if (arr_res[i] < arr_res[i + 1]):
+                if arr_res[i] < arr_res[i + 1]:
                     arr_res[i], arr_res[i + 1] = arr_res[i + 1], arr_res[i]
                     arr_pop[i], arr_pop[i + 1] = arr_pop[i + 1], arr_pop[i]
             n = n - 1
         return arr_pop, arr_res
 
-    def decode_GA(self, chromo, center_val, all_data, detail):
-        """the function "decode_GA" represents the decoding of the chromosome in the
+    def decode_ga(self, chromo, center_val, all_data, detail):
+        """the function "decode_ga" represents the decoding of the chromosome in the
         genetic algorithm proposed by Panwadee (function "genetic_algorithm");
         the chromosome is a python list; each element of the list represents
         a score corresponding to a request serviced by a flying taxi
@@ -116,7 +116,7 @@ class DynamicGa2():
                                   (Individual solution in the GA algorithm)
                * center_val      : [x,y]--coordinates (values) of the recharging center
                * all_data        : pandas dataframe with parameters for all requests
-               * detail          : boolean parameter, True only for the last decode_GA
+               * detail          : boolean parameter, True only for the last decode_ga
                * self.av_data    : available data, which is a pandas dataframe with parameters
                                     for the available requests
                * self.av_bl      : available battery level in the current horizon
@@ -125,12 +125,12 @@ class DynamicGa2():
                * self.m_ft       : python dictionary representing the finishing time of each task
 
 
-        return: (if details == None)
+        return: (if detail is False)
                * obj_val_chrom    : the value of the objective-function
 
-        return: (if details != None)
+        return: (if detail is True)
                * serv          : list of the served requests
-        output: (if details != None)
+        output: (if detail is True)
                * self.av_bl     : updated battery level
                * self.m_task    : updated matrix task (with new served requests)
                * self.m_st      : updated matrix start time
@@ -144,14 +144,15 @@ class DynamicGa2():
         self.new_bl = copy.deepcopy(self.av_bl)
         # ----------------------------------------------
         self.obj_val_chrom = 0
-        self.na_i_gene= [] #request list already used
-        self.serv_req = [] #list of the served requests
+        self.na_i_gene = []  # request list already used
+        self.serv_req = []  # list of the served requests
         if not isinstance(chromo, np.ndarray):
             chromo = np.array(chromo)
-        chrom_priority = ((uf.T - self.av_data["pick_t"][np.arange(len(chromo)) // self.nb_taxis]) / uf.T) * ((1 + chromo) / 2)
+        chrom_priority = ((uf.T - self.av_data["pick_t"][np.arange(len(chromo)) // self.nb_taxis]) / uf.T) *\
+                         ((1 + chromo) / 2)
         chrom_priority = chrom_priority.to_list()
 
-        #### End of ideal priority combination
+        # End of ideal priority combination
 
         order_assign = sorted(range(len(chrom_priority)),
                               key=lambda k: chrom_priority[k], reverse=True)
@@ -164,15 +165,15 @@ class DynamicGa2():
                 # ----------------------------------------------
                 req_id = self.av_data.req_id[i_req - 1]
                 req_id_data_idx = self.av_data.loc[self.av_data['req_id'] == req_id].index[0]
-                #print("\n * req_id  =  ", req_id, " * j_taxi = ", j_taxi)
-                #print(" * pick_t: ", self.av_data.pick_t[req_id_data_idx])
+                # print("\n * req_id  =  ", req_id, " * j_taxi = ", j_taxi)
+                # print(" * pick_t: ", self.av_data.pick_t[req_id_data_idx])
                 # ----------------------------------------------
                 dur_prep = uf.cal_dur_move_time(center_val, self.av_data, req_id_data_idx)
                 prev_fini_time = 0
                 prev_req = 'c'
-                if (len(self.new_m_task["taxi" + str(j_taxi)]) != 0):
+                if len(self.new_m_task["taxi" + str(j_taxi)]) != 0:
                     prev_req = self.new_m_task["taxi" + str(j_taxi)][-1]
-                    if (prev_req != "b"):
+                    if prev_req != "b":
                         # ----------------------------------------------
                         # print(" prev_req :", prev_req)
                         prev_req_data_idx = all_data.loc[all_data['req_id'] == prev_req].index[0]
@@ -199,28 +200,16 @@ class DynamicGa2():
                     if enough_battery:
                         if self.av_data["pick_t"][req_id_data_idx] + dur_t_req <= uf.T:
                             self.new_task(j_taxi, req_id, self.av_data["pick_t"][req_id_data_idx],
-                                          round((self.av_data["pick_t"][req_id_data_idx] + dur_t_req), 2),
+                                          self.av_data["pick_t"][req_id_data_idx] + dur_t_req,
                                           round(self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep + dur_t_req), 2),
                                           i_req)
-                            # ----------------------------------------------
-                            # # add req_id to served requests
-                            # serv_req.append(req_id)
-                            # # ----------------------------------------------
-                            # # remove the assigned demand from the chromosome
-                            # for j_count in range(self.nb_taxis):
-                            #     elem_remove = self.nb_taxis * (i_req - 1) + j_count
-                            #     if (i_gene != elem_remove) and elem_remove in order_assign and \
-                            #             order_assign.index(elem_remove) > order_assign.index(i_gene):
-                            #         # print("* elem_remove=", elem_remove)
-                            #         order_assign.remove(elem_remove)
-
                     # ----------------------------------------------
                     # added by Sana for serving requests inside time-windows
                     else:  # charge battery if battery level is not enough
                         dur_prev_to_center = uf.cal_dur_back_to_center(prev_req_data_idx, center_val, all_data)
                         self.new_task(j_taxi, "b",
-                                      round(prev_fini_time + dur_prev_to_center,2),
-                                      round(prev_fini_time + dur_prev_to_center + uf.R,2),
+                                      prev_fini_time + dur_prev_to_center,
+                                      prev_fini_time + dur_prev_to_center + uf.R,
                                       100, i_req)
 
                         dur_prep1 = uf.cal_dur_move_time(center_val, self.av_data, req_id_data_idx)
@@ -236,18 +225,9 @@ class DynamicGa2():
                             if self.av_data["pick_t"][req_id_data_idx] + dur_t_req <= self.T_sup:
                                 req_id_new_pick_time = round(prev_fini_time1 + dur_prep1, 2)
                                 self.new_task(j_taxi, req_id, req_id_new_pick_time,
-                                              round((req_id_new_pick_time + dur_t_req), 2),
+                                              req_id_new_pick_time + dur_t_req,
                                               round(self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req), 2),
                                               i_req)
-
-                                # serv_req.append(req_id)
-                                # # remove the assigned demand from the chromosome
-                                # for j_count in range(self.nb_taxis):
-                                #     elem_remove = self.nb_taxis * (i_req - 1) + j_count
-                                #     if (i_gene != elem_remove) and elem_remove in order_assign and \
-                                #         order_assign.index(elem_remove) > order_assign.index(i_gene):
-                                #         # print("* elem_remove=", elem_remove)
-                                #         order_assign.remove(elem_remove)
 
                 elif ((prev_fini_time + dur_prep <= self.av_data["late_t"][req_id_data_idx])
                       &
@@ -258,26 +238,16 @@ class DynamicGa2():
                     req_id_new_pick_time = round(prev_fini_time + dur_prep, 2)
                     if req_id_new_pick_time + dur_t_req <= self.T_sup:
                         self.new_task(j_taxi, req_id, req_id_new_pick_time,
-                                      round((req_id_new_pick_time + dur_t_req), 2),
+                                      req_id_new_pick_time + dur_t_req,
                                       round(self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep + dur_t_req), 2),
                                       i_req)
-
-                        # serv_req.append(req_id)
-                        # # remove the assigned demand from the chromosome
-                        # for j_count in range(self.nb_taxis):
-                        #     if j_count != j_taxis:
-                        #         elem_remove = self.nb_taxis * (i_req - 1) + j_count
-                        #         if (i_gene != elem_remove) and elem_remove in order_assign and \
-                        #                     order_assign.index(elem_remove) > order_assign.index(i_gene):
-                        #             # print("* elem_remove=", elem_remove)
-                        #             order_assign.remove(elem_remove)
                     # ----------------------------------------------
                 # print(" * new_m_task [taxi",j_taxi,"] =", self.new_m_task["taxi"+str(j_taxi)][-1] )
                 # print(" * new_m_st [taxi",j_taxi,"] =", round(self.new_m_st["taxi"+str(j_taxi)][-1], 2) )
                 # print(" * new_m_ft [taxi",j_taxi,"] =", round(self.new_m_ft["taxi"+str(j_taxi)][-1], 2) )
         # print(" * new_m_task =", self.new_m_task)
 
-        if detail != None:
+        if detail:
             self.m_task = copy.deepcopy(self.new_m_task)
             self.m_st = copy.deepcopy(self.new_m_st)
             self.m_ft = copy.deepcopy(self.new_m_ft)
@@ -288,7 +258,7 @@ class DynamicGa2():
             return self.obj_val_chrom
 
     def new_task(self, j_taxi, req_id, st, ft, bl, i_req):
-        """the function, new_task is only called by "decode_GA", and implements the following variables:
+        """the function, new_task is only called by "decode_ga", and implements the following variables:
         input :
                * j_taxi     : taxi number used
                * req_id     : request ID
@@ -307,11 +277,11 @@ class DynamicGa2():
                * self.na_req_id      : updated list of Not Available priority
         """
         self.new_m_task["taxi" + str(j_taxi)].append(req_id)
-        self.new_m_st["taxi" + str(j_taxi)].append(round(st,2))
-        self.new_m_ft["taxi" + str(j_taxi)].append(round(ft,2))
+        self.new_m_st["taxi" + str(j_taxi)].append(round(st, 2))
+        self.new_m_ft["taxi" + str(j_taxi)].append(round(ft, 2))
         self.new_bl[j_taxi - 1] = bl
         if req_id != "b":
-            #implements the Second objective-function that maximizes the total service time input
+            # implements the Second objective-function that maximizes the total service time input
             self.obj_val_chrom += ft - st
             # ----------------------------------------------
             # add req_id to served requests
@@ -322,10 +292,7 @@ class DynamicGa2():
                 if j_count != j_taxi - 1:
                     elem_remove = self.nb_taxis * (i_req - 1) + j_count
                     self.na_i_gene.append(elem_remove)
-                    # if elem_remove in order_assign and \
-                    #         self.order_assign.index(elem_remove) > self.order_assign.index(i_gene):
-                    #     # print("* elem_remove=", elem_remove)
-                    #     self.order_assign.remove(elem_remove)
+
     def genetic_algorithm(self, center_val, all_data):
         """the function "genetic_algorithm" the GA main loop, that performs cross-over and mutations
         to evolve the population in order to find the "best" chromosome/solution
@@ -349,13 +316,13 @@ class DynamicGa2():
         nb_chrom = 2 * chrom_size
         population = np.random.rand(nb_chrom, chrom_size)
 
-        result_GA = []
+        result_ga = []
         for chromosome in population:
-            result_GA_elem = self.decode_GA(chromosome, center_val, all_data, detail=None)
-            result_GA.append(result_GA_elem)
+            result_ga_elem = self.decode_ga(chromosome, center_val, all_data, False)
+            result_ga.append(result_ga_elem)
 
-        population, result_GA = self.sorting_population(population, result_GA) #TODO a améliorer
-        best_res = result_GA[0]
+        population, result_ga = self.sorting_population(population, result_ga)  # TODO a améliorer
+        best_res = result_ga[0]
         stop_value = 30
         nb_select = int(0.1 * nb_chrom)
         nb_crossover = int(0.7 * nb_chrom)
@@ -380,14 +347,14 @@ class DynamicGa2():
             for i in range(nb_mutation):
                 new_pop.append(np.random.rand(chrom_size))
             population = new_pop
-            result_GA = []
+            result_ga = []
             for chromosome in population:
-                result_GA_elem = self.decode_GA(chromosome, center_val, all_data, detail=None)
-                result_GA.append(result_GA_elem)
+                result_ga_elem = self.decode_ga(chromosome, center_val, all_data, False)
+                result_ga.append(result_ga_elem)
 
-            population, result_GA = self.sorting_population(population, result_GA)
-            best_res_iter = result_GA[0]
-            if (best_res_iter > best_res):
+            population, result_ga = self.sorting_population(population, result_ga)
+            best_res_iter = result_ga[0]
+            if best_res_iter > best_res:
                 best_res = best_res_iter
                 n_not_improve = 0
             else:
@@ -395,10 +362,10 @@ class DynamicGa2():
             n_iteration = n_iteration + 1
 
         final_chrom = population[0]
-        serv = self.decode_GA(final_chrom,
+        serv = self.decode_ga(final_chrom,
                               center_val,
                               all_data,
-                              detail=True)
+                              True)
 
         return serv
 
@@ -459,6 +426,7 @@ class DynamicGa2():
         print(" * unserved requests : ", av_req)
         return cpu, serv_req, av_req
 
+
 # ___________________            main          _______________________________
 if __name__ == "__main__":
     ga_results = None
@@ -471,18 +439,19 @@ if __name__ == "__main__":
     #              "instances/instance100_5.txt"]
     instances = ["instances/instance50_2.txt", "instances/instance100_3.txt",
                  "instances/instance100_5.txt"]
-    result = True #to save the results in a csv file
+    result = True  # to save the results in a csv file
     for window_lengths in windows[4:5]:
         try:
             ga = DynamicGa2(window_lengths, instances, result)
-            if result: ga = ga.get_test_results()
-        except:
+            if result:
+                ga = ga.get_test_results()
+        except Exception:
             print('error with windows_lengths:', window_lengths)
             if result:
                 ga = pd.DataFrame({'Objective values': [None],
-                    '% unserved requests': [None],
-                    'GA CPU time': [None],
-                    'window lengths': [window_lengths]})
+                                   '% unserved requests': [None],
+                                   'GA CPU time': [None],
+                                   'window lengths': [window_lengths]})
         if result:
             if isinstance(ga_results, pd.DataFrame):
                 ga_results = pd.concat([ga_results, ga], ignore_index=True)
