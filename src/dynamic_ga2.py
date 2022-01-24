@@ -35,7 +35,7 @@ class DynamicGa2:
         # creation of results DataFrame
         test_results = pd.DataFrame(index=np.arange(0, 1), columns=['Objective values', '% unserved requests',
                                                                     'GA CPU time', 'window lengths'])
-        self.T_inf, self.T_sup = 0, 1440  # start and end times of the day (in minutes)
+        self.t_inf, self.t_sup = 0, 1440  # start and end times of the day (in minutes)
 
         print("\n\n__________  window length =  ", window_len, " min _____")
         # argument = 'w+'
@@ -59,7 +59,7 @@ class DynamicGa2:
 
                 # -------------------------------------------------------------
                 # cProfile to analyze the code
-                # cProfile.run('rh_ga2(T_inf, T_sup, window_len, av_taxis,data, center_val)',
+                # cProfile.run('rh_ga2(t_inf, t_sup, window_len, av_taxis,data, center_val)',
                 #                 'ga_output.dat')
                 # with open("ga_output_time.txt", "w") as f:
                 #     p = pstats.Stats("ga_output.dat", stream = f)
@@ -222,7 +222,7 @@ class DynamicGa2:
                                 &
                                 (self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req + dur_back_center) >=
                                  uf.b_min)):
-                            if self.av_data["pick_t"][req_id_data_idx] + dur_t_req <= self.T_sup:
+                            if self.av_data["pick_t"][req_id_data_idx] + dur_t_req <= self.t_sup:
                                 req_id_new_pick_time = round(prev_fini_time1 + dur_prep1, 2)
                                 self.new_task(j_taxi, req_id, req_id_new_pick_time,
                                               req_id_new_pick_time + dur_t_req,
@@ -236,7 +236,7 @@ class DynamicGa2:
                       (self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep + dur_t_req + dur_back_center) >=
                        uf.b_min)):
                     req_id_new_pick_time = round(prev_fini_time + dur_prep, 2)
-                    if req_id_new_pick_time + dur_t_req <= self.T_sup:
+                    if req_id_new_pick_time + dur_t_req <= self.t_sup:
                         self.new_task(j_taxi, req_id, req_id_new_pick_time,
                                       req_id_new_pick_time + dur_t_req,
                                       round(self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep + dur_t_req), 2),
@@ -386,8 +386,8 @@ class DynamicGa2:
            * serv_req     : list of the served requests
            * av_req       : list of the (remaining) available requests (unserved requests)
         output:
-           * self.T_inf, self.T_sup : upper and lower bounds on the scheduling horizon
-                            [T_inf, T_sup] = [0, 1440](24 hours for example)
+           * self.t_inf, self.t_sup : upper and lower bounds on the scheduling horizon
+                            [t_inf, t_sup] = [0, 1440](24 hours for example)
            * self.av_data : a pandas dataframe with the available requests data
            * self.m_task, self.m_st and self.m_ft : matrices of tasks as defined in the above function descriptions
            * self.av_bl : list of battery level as defined in the above function descriptions
@@ -404,7 +404,7 @@ class DynamicGa2:
 
         t_i = time.time()  # initial time (to compute the cpu time)
 
-        for t in range(self.T_inf, self.T_sup, window_len):
+        for t in range(self.t_inf, self.t_sup, window_len):
             print("\n * t =", t)
             # data preparation
             av_req.extend([all_data.req_id[i] for i in all_data.index
