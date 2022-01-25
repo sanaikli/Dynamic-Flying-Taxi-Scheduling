@@ -38,19 +38,18 @@ class DynamicGa2:
         self.t_inf, self.t_sup = 0, 1440  # start and end times of the day (in minutes)
 
         print("\n\n__________  window length =  ", window_len, " min _____")
-        # argument = 'w+'
+        # argument = 'w+'  # For Test
         ga_obj_values = []
         ga_non_profit = []
         ga_cpus = []
         ga_unserv_perc = []  # percentage of unserved demands
-        # ga_averages_morning, fcfs_averages_evening = [], []
+        # ga_averages_morning, fcfs_averages_evening = [], []  # For Test
 
         for instance_name in instances:
             print("\n--->", instance_name)
             nb_req, self.nb_taxis, all_data, center_val = uf.prepare_data(instance_name, 'panwadee')
             # all_data=all_data[:6]
             all_data.req_id = all_data.req_id.astype(int)
-            # av_taxis = [i for i in range(1, self.nb_taxis + 1)]
 
             for i_run in range(1, 2):
                 cpu, s_req, uns_req = self.rh_ga2(window_len,
@@ -321,7 +320,7 @@ class DynamicGa2:
             result_ga_elem = self.decode_ga(chromosome, center_val, all_data, False)
             result_ga.append(result_ga_elem)
 
-        population, result_ga = self.sorting_population(population, result_ga)  # TODO a améliorer
+        population, result_ga = self.sorting_population(population, result_ga)  #TODO a améliorer
         best_res = result_ga[0]
         stop_value = 30
         nb_select = int(0.1 * nb_chrom)
@@ -332,21 +331,13 @@ class DynamicGa2:
 
         while n_not_improve < stop_value:
             new_pop = []
-            for i in range(nb_select):
-                new_pop.append(population[i])
-            for i in range(nb_crossover):
-                chrom_p1 = population[random.randint(0, nb_select - 1)]
-                chrom_p2 = population[random.randint(nb_select, nb_chrom - 1)]
-                crossover_chrom = []
-                for j in range(chrom_size):
-                    if random.randint(1, 10) <= 7:
-                        crossover_chrom.append(chrom_p1[j])
-                    else:
-                        crossover_chrom.append(chrom_p2[j])
-                new_pop.append(crossover_chrom)
-            for i in range(nb_mutation):
-                new_pop.append(np.random.rand(chrom_size))
-            population = new_pop
+            new_pop.extend(list(population[:nb_select]))
+            chrom_p1 = population[np.random.randint(nb_select - 1, size=nb_crossover)]
+            chrom_p2 = population[np.random.randint(nb_select, high=nb_chrom - 1, size=nb_crossover)]
+            crossover_chrom_temp = np.random.randint(10, size=(nb_crossover, chrom_size))
+            crossover_chrom = (crossover_chrom_temp <= 6) * chrom_p1 + (crossover_chrom_temp > 6) * chrom_p2
+            new_pop.extend(list(crossover_chrom))
+            new_pop.extend(list(np.random.rand(nb_mutation, chrom_size)))
             result_ga = []
             for chromosome in population:
                 result_ga_elem = self.decode_ga(chromosome, center_val, all_data, False)
@@ -437,10 +428,10 @@ if __name__ == "__main__":
     #              "instances/instance50_2.txt", "instances/instance50_3.txt",
     #              "instances/instance50_5.txt", "instances/instance100_3.txt",
     #              "instances/instance100_5.txt"]
-    instances = ["instances/instance50_2.txt", "instances/instance100_3.txt",
-                 "instances/instance100_5.txt"]
+    instances = ["instances/instance50_2.txt", "instances/instance100_3.txt", "instances/instance100_5.txt"]
+    windows = windows[4:5]
     result = True  # to save the results in a csv file
-    for window_lengths in windows[4:5]:
+    for window_lengths in windows:
         try:
             ga = DynamicGa2(window_lengths, instances, result)
             if result:
