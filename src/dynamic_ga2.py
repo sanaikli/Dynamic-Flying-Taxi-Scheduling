@@ -332,8 +332,8 @@ class DynamicGa2:
         while n_not_improve < stop_value:
             new_pop = []
             new_pop.extend(list(population[:nb_select]))
-            chrom_p1 = population[np.random.randint(nb_select - 1, size=nb_crossover)]
-            chrom_p2 = population[np.random.randint(nb_select, high=nb_chrom - 1, size=nb_crossover)]
+            chrom_p1 = population[np.random.randint(nb_select, size=nb_crossover)]
+            chrom_p2 = population[np.random.randint(nb_select + 1, high=nb_chrom - 1, size=nb_crossover)]
             crossover_chrom_temp = np.random.randint(10, size=(nb_crossover, chrom_size))
             crossover_chrom = (crossover_chrom_temp <= 6) * chrom_p1 + (crossover_chrom_temp > 6) * chrom_p2
             new_pop.extend(list(crossover_chrom))
@@ -428,7 +428,7 @@ if __name__ == "__main__":
     #              "instances/instance50_2.txt", "instances/instance50_3.txt",
     #              "instances/instance50_5.txt", "instances/instance100_3.txt",
     #              "instances/instance100_5.txt"]
-    instances = ["instances/instance50_2.txt", "instances/instance100_3.txt", "instances/instance100_5.txt"]
+    instances = ["instances/instance100_3.txt"]
     windows = windows[4:5]
     result = True  # to save the results in a csv file
     for window_lengths in windows:
