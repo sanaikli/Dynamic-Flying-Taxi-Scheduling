@@ -15,6 +15,7 @@ __author__ = 'saikli'
 import pandas as pd
 import math
 import time
+import copy
 # ---------------------------------------
 
 # Constant values of the problem (from Panwadee's GA2)
@@ -61,7 +62,8 @@ def prepare_data(file_instance, instance_orig):
     else:  # instance_orig == "panwadee"
         data = pd.DataFrame(matrix, columns=['req_id', 'ori_x', 'ori_y', 'des_x', 'des_y', 'pick_t'])
         # Compute duration time from origin to destination + takeoff and landing time
-        data['dist'] = data.apply(lambda x: round(math.sqrt((x['ori_x']-x['des_x'])**2 + (x['ori_y']-x['des_y'])**2), 2),
+        data['dist'] = data.apply(lambda x:
+                                  round(math.sqrt((x['ori_x']-x['des_x'])**2 + (x['ori_y']-x['des_y'])**2), 2),
                                   axis=1)
         data['dur_t'] = data.apply(lambda x: round(x['dist']/(v_fly*1000/60)+2*s_need, 2), axis=1)
         # data['early_t'] = data.apply(lambda x: x['pick_t'], axis=1)
@@ -128,7 +130,7 @@ def obj_value(matrix_task, matrix_start_time,
                                 of each task.
                                 the key represents the taxi
                                 the values are a list of finishing time of each task
-    output:
+    return:
            * accumulate_service_time: the value of the objective-function.
     """
     accumulate_service_time = 0
@@ -150,7 +152,7 @@ def dur_non_profit_trip(matrix_task, data, center_val):
            * data       : pandas dataframe representing the instance
            * center_val : [x,y]--coordinates of the center
            the values are a list of finishing time of each task
-    output:
+    return:
            * dur_t      : the time duration of non-profitable trips
                           according to the distribution of tasks in matrix_task.
     """
@@ -192,8 +194,8 @@ def define_zone(data, center_val, n_zone_x, n_zone_y):
            * center_val: [x,y]-coordinates of the recharging center
            * n_zone_x  : number of zones along the x-axis
            * n_zone_y  : number of zones along the y-axis (the total number of
-                         zonses is "n_zone_x*n_zone_y")
-    output :
+                         zones is "n_zone_x*n_zone_y")
+    return :
            * zone_id       : zone identifier (1 to n_zone_x*n_zone_y)
            * zone_coord    : [x,y]-coordinates of the lower left point of the zone
                              which we consider as the coordinates of the zone
@@ -255,7 +257,7 @@ def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, av_taxis, data
            * av_taxis     : list of available taxis
            * data         : pandas dataframe representing the instance
            * center_zone  : zone of the recharging center
-    output :
+    return :
            * cpu          : cpu time
            * cumul_obj_val: the value of the objective-function at the end of the horizon
 
@@ -267,10 +269,11 @@ def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, av_taxis, data
             (see description of the function "obj_value"  ).
     """
     av_req, serv_req, unserv_req = {}, {}, {}
+    matrix_init = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
     # matrix initializations
-    matrix_task = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
-    matrix_start_time = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
-    matrix_fini_time = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
+    matrix_task = copy.deepcopy(matrix_init)
+    matrix_start_time = copy.deepcopy(matrix_init)
+    matrix_fini_time = copy.deepcopy(matrix_init)
 
     # battery level initialization
     nb_taxis = len(av_taxis)
@@ -281,15 +284,16 @@ def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, av_taxis, data
         av_req.update({i: req[i] for i in req.keys() if t+window_len > req[i] >= t})
         # print("\n * t = ", t)
 
-        serv_req, unserv_req, new_matrix_task, new_matrix_start_time, new_matrix_fini_time, new_battery_level = heuristic(av_req,
-                                                  av_taxis,
-                                                  battery_level,
-                                                  matrix_task,
-                                                  matrix_start_time,
-                                                  matrix_fini_time,
-                                                  data,
-                                                  center_zone,
-                                                  t_sup)
+        serv_req, unserv_req, new_matrix_task, new_matrix_start_time, new_matrix_fini_time, new_battery_level = \
+            heuristic(av_req,
+                      av_taxis,
+                      battery_level,
+                      matrix_task,
+                      matrix_start_time,
+                      matrix_fini_time,
+                      data,
+                      center_zone,
+                      t_sup)
         matrix_task = new_matrix_task
         matrix_start_time = new_matrix_start_time
         matrix_fini_time = new_matrix_fini_time

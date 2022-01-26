@@ -39,7 +39,7 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
                                  the values are a list of finishing time of the request
            * data              : pandas dataframe representing the instance
            * t_sup             : upper value of the scheduling horizon (1440 minutes)
-    output :
+    return :
            * serv_req          : dictionary of served requests
                                  the keys represent the requests index
                                  the values are the serve times (pick-up time
@@ -58,6 +58,7 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
 
     # served requests initialization
     serv_req = {}
+    prev_req_data_idx = None
     prev_req = 'c'
     for i in range(len(av_req_copy)):
         # --------------------------------------------------------------------
@@ -252,12 +253,12 @@ if __name__ == "__main__":
             av_taxis = [i for i in range(1, nb_taxis + 1)]
 
             # rolling_time_window call with FCFS heuristic
-            nn_cpu, nn_cumul_obj_val, nn_serv_req, nn_unserv_req, nn_matrix_task, nn_matrix_start_time, nn_matrix_fini_time = uf.rolling_time_window(
-                nn_heuristic,
-                t_inf, t_sup,
-                window_len,
-                req, av_taxis,
-                data)
+            nn_cpu, nn_cumul_obj_val, nn_serv_req, nn_unserv_req, nn_matrix_task, nn_matrix_start_time, nn_matrix_fini_time = \
+                uf.rolling_time_window(nn_heuristic,
+                                       t_inf, t_sup,
+                                       window_len,
+                                       req, av_taxis,
+                                       data)
             # -------------------------------------------------------------
             # cProfile to analyze the code
             # cProfile.run('uf.rolling_time_window(nn_heuristic,t_inf,t_sup,window_len,req, av_taxis,data)',

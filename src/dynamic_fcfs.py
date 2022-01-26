@@ -13,7 +13,7 @@ import operator
 # import time
 # ---------------------------------------
 
-def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, center_zone, T_sup):
+def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, center_zone, t_sup):
     """the fcfs heuristic schedules requests in a "first-come first-serve"
     fashion, according to requests start time (static case)
 
@@ -33,8 +33,8 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, ce
                              of starting time of each task
            * m_ft          : a python dictionary representing the finishing time of each task.
            * data          : pandas dataframe representing the instance
-           * T_sup         : upper value of the scheduling horizon (1440 minutes)
-    output :
+           * t_sup         : upper value of the scheduling horizon (1440 minutes)
+    return :
            * serv_req      : list of served requests
            * unserv_req    : dictionary of unserved requests
                              the keys represent the requests index, and the values are
@@ -49,9 +49,9 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, ce
     av_req = dict(sorted(av_req.items(), key=operator.itemgetter(1)))
     av_req_copy = av_req.copy()
 
-    # served requests initialization   
+    # served requests initialization
     serv_req = {}
-
+    prev_req_data_idx = None
     prev_req = 'c'
     for i_req in list(av_req_copy.keys()):
 
@@ -62,7 +62,7 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, ce
         # --------------------------------------------------------------------
         # choose the first available taxi
         temp = [key for key, value in m_ft.items() if value == []]
-        if temp != []:
+        if temp:
             taxi = temp[0]
             j_taxi = int(taxi[4:])
             temp.remove(taxi)
@@ -72,9 +72,9 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, ce
         # -----------------------------------------------------------------
 
         prev_fini_time = 0
-        if (len(m_task["taxi" + str(j_taxi)]) != 0):
+        if len(m_task["taxi" + str(j_taxi)]) != 0:
             prev_req = m_task["taxi" + str(j_taxi)][-1]
-            if (prev_req != "b"):
+            if prev_req != "b":
                 prev_req_data_idx = data.index[data['req_id'] == prev_req].tolist()[0]
                 dur_prep = uf.cal_dur_move_time(center_val, data, i_req_data_idx, prev_req_data_idx)
 
@@ -96,7 +96,7 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, ce
         # check if it's possible te serve the request
         if enough_time_to_pick:
             if enough_battery:
-                if data["pick_t"][i_req_data_idx] + dur_t_req <= T_sup:
+                if data["pick_t"][i_req_data_idx] + dur_t_req <= t_sup:
                     m_task["taxi" + str(j_taxi)].append(i_req)
                     m_st["taxi" + str(j_taxi)].append(data["pick_t"][i_req_data_idx])
 
@@ -128,9 +128,9 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, ce
                         &
                         (battery_level[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req + dur_back_center) >=
                          uf.b_min)):
-                    if data["pick_t"][i_req_data_idx] + dur_t_req <= T_sup:
+                    if data["pick_t"][i_req_data_idx] + dur_t_req <= t_sup:
                         m_task["taxi" + str(j_taxi)].append(i_req)
-                        # new pick_t: serve the requests as soon as the taxi 
+                        # new pick_t: serve the requests as soon as the taxi
                         # finiches its previous task
                         i_req_new_pick_time = round(prev_fini_time1 + dur_prep1, 2)
                         m_st["taxi" + str(j_taxi)].append(i_req_new_pick_time)
@@ -150,7 +150,7 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, ce
             # new pick_t: serve the requests as soon as the taxi
             # finiches its previous task
             i_req_new_pick_time = round(prev_fini_time + dur_prep, 2)
-            if i_req_new_pick_time + dur_t_req <= T_sup:
+            if i_req_new_pick_time + dur_t_req <= t_sup:
                 m_task["taxi" + str(j_taxi)].append(i_req)
                 m_st["taxi" + str(j_taxi)].append(i_req_new_pick_time)
                 m_ft["taxi" + str(j_taxi)].append(round((i_req_new_pick_time + dur_t_req), 2))
@@ -168,7 +168,7 @@ def fcfs_heuristic(av_req, av_taxis, battery_level, m_task, m_st, m_ft, data, ce
 if __name__ == "__main__":
 
     # RH parameters
-    T_inf, T_sup = 0, 1440  # start and end times (respectively)
+    t_inf, t_sup = 0, 1440  # start and end times (respectively)
     # of the day (in minutes) : 1440 = 24h
     # the scheduling horizon T=[0, 1440]
 
@@ -220,13 +220,13 @@ if __name__ == "__main__":
             # ----------------------------------------------------------------
 
             # rolling_time_window call with FCFS heuristic
-            fcfs_cpu, fcfs_cumul_obj_val, fcfs_serv_req, fcfs_unserv_req, fcfs_m_task, fcfs_m_st, fcfs_m_ft = uf.rolling_time_window(
-                fcfs_heuristic,
-                T_inf, T_sup,
-                window_len,
-                req, av_taxis,
-                data,
-                center_zone)
+            fcfs_cpu, fcfs_cumul_obj_val, fcfs_serv_req, fcfs_unserv_req, fcfs_m_task, fcfs_m_st, fcfs_m_ft = \
+                uf.rolling_time_window(fcfs_heuristic,
+                                       t_inf, t_sup,
+                                       window_len,
+                                       req, av_taxis,
+                                       data,
+                                       center_zone)
             fcfs_obj_values.append(round(fcfs_cumul_obj_val, 2))
             fcfs_non_profit.append(round(uf.dur_non_profit_trip(fcfs_m_task, data, center_val), 2))
             fcfs_cpus.append(fcfs_cpu)

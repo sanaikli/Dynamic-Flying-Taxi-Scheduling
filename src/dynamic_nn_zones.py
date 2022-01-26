@@ -16,7 +16,7 @@ import math
 
 
 def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
-                 matrix_start_time, matrix_fini_time, data, center_zone, T_sup):
+                 matrix_start_time, matrix_fini_time, data, center_zone, t_sup):
     """The NN (Nearest Neighbor) heuristic schedules the requests according to their proximity
     to taxi locations, i.e., the closest requests are the first to be scheduled
     input :
@@ -37,8 +37,8 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
                                  the key represents the taxi
                                  the values are a list of finishing time of the request
            * data              : pandas dataframe representing the instance
-           * T_sup             : upper value of the scheduling horizon (1440 minutes)
-    output :
+           * t_sup             : upper value of the scheduling horizon (1440 minutes)
+    return :
            * serv_req          : dictionary of served requests
                                  the keys represent the requests index
                                  the values are the serve times (pick-up time
@@ -61,9 +61,9 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
     prev_req = 'c'
     for i in range(len(av_req_copy)):
         # choose the first available taxi
-        # i.e., the one whith the smallest fini_time
+        # i.e., the one with the smallest fini_time
         temp = [key for key, value in matrix_fini_time.items() if value == []]
-        if temp != []:
+        if temp:
             taxi = temp[0]
             j_taxi = int(taxi[4:])
             temp.remove(taxi)
@@ -72,7 +72,7 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
             j_taxi = int(min(temp, key=temp.get)[4:])
 
         # current taxi location = center (at start)
-        if matrix_task['taxi' + str(j_taxi)] == []:
+        if not matrix_task['taxi' + str(j_taxi)]:
             current_taxi_loc = center_val
 
             # --------- NN per zone
@@ -128,10 +128,10 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
         dur_prep = uf.cal_dur_move_time(center_val, data, i_req_data_idx, -1)
 
         prev_fini_time = 0
-        if (len(matrix_task["taxi" + str(j_taxi)]) != 0):
+        if len(matrix_task["taxi" + str(j_taxi)]) != 0:
             prev_req = matrix_task["taxi" + str(j_taxi)][-1]
             prev_fini_time = matrix_fini_time["taxi" + str(j_taxi)][-1]
-            if (prev_req != "b"):
+            if prev_req != "b":
                 prev_req_data_idx = data.index[data['req_id'] ==
                                                prev_req].tolist()[0]
                 dur_prep = uf.cal_dur_move_time(center_val, data,
@@ -152,7 +152,7 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
         # enough_time and battery to pick it up
         if enough_time_to_pick:
             if enough_battery:
-                if data["pick_t"][i_req_data_idx] + dur_t_req <= T_sup:
+                if data["pick_t"][i_req_data_idx] + dur_t_req <= t_sup:
                     matrix_task["taxi" + str(j_taxi)].append(i_req)
                     matrix_start_time["taxi" + str(j_taxi)].append(data["pick_t"][i_req_data_idx])
                     matrix_fini_time["taxi" + str(j_taxi)].append(
@@ -184,7 +184,7 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
                     # new pick_t: serve the requests as soon as the taxi
                     # finiches its previous task
                     i_req_new_pick_time = round(prev_fini_time1 + dur_prep1, 2)
-                    if i_req_new_pick_time + dur_t_req <= T_sup:
+                    if i_req_new_pick_time + dur_t_req <= t_sup:
                         matrix_task["taxi" + str(j_taxi)].append(i_req)
                         # ---------------------------------------------------
 
@@ -205,7 +205,7 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
             # new pick_t: serve the requests as soon as the taxi
             # finiches its previous task
             i_req_new_pick_time = round(prev_fini_time + dur_prep, 2)
-            if i_req_new_pick_time + dur_t_req <= T_sup:
+            if i_req_new_pick_time + dur_t_req <= t_sup:
                 matrix_task["taxi" + str(j_taxi)].append(i_req)
 
                 matrix_start_time["taxi" + str(j_taxi)].append(i_req_new_pick_time)
@@ -225,7 +225,7 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
 if __name__ == "__main__":
 
     # RH parameters
-    T_inf, T_sup = 0, 1440  # start and end times (respectively)
+    t_inf, t_sup = 0, 1440  # start and end times (respectively)
     # of the day (in minutes) : 1440 = 24h
     # the scheduling horizon T=[0, 1440]
 
@@ -272,23 +272,23 @@ if __name__ == "__main__":
             # ----------------------------------------------------------------
 
             # all (known) requests and their pick-up times
-            # in the begining of the scheduling horizon
+            # in the beginning of the scheduling horizon
             req = {data.req_id[i]: data.pick_t[i] for i in data.index}
 
-            # available taxis in the begining of the scheduling horizon
+            # available taxis in the beginning of the scheduling horizon
             av_taxis = [i for i in range(1, nb_taxis + 1)]
 
             # rolling_time_window call with FCFS heuristic
-            nn_cpu, nn_cumul_obj_val, nn_serv_req, nn_unserv_req, nn_matrix_task, nn_matrix_start_time, nn_matrix_fini_time = uf.rolling_time_window(
-                nn_heuristic,
-                T_inf, T_sup,
-                window_len,
-                req, av_taxis,
-                data,
-                center_zone)
+            nn_cpu, nn_cumul_obj_val, nn_serv_req, nn_unserv_req, nn_matrix_task, nn_matrix_start_time, nn_matrix_fini_time = \
+                uf.rolling_time_window(nn_heuristic,
+                                       t_inf, t_sup,
+                                       window_len,
+                                       req, av_taxis,
+                                       data,
+                                       center_zone)
             # -------------------------------------------------------------
             # cProfile to analyze the code
-            # cProfile.run('uf.rolling_time_window(nn_heuristic,T_inf,T_sup,window_len,req, av_taxis,data)',
+            # cProfile.run('uf.rolling_time_window(nn_heuristic,t_inf,t_sup,window_len,req, av_taxis,data)',
             #              'output.dat')
             # with open("output_time.txt", "w") as f:
             #     p = pstats.Stats("output.dat", stream = f)

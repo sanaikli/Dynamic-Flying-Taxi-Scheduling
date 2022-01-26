@@ -10,12 +10,11 @@ __author__ = 'saikli'
 # -----      important packages    ------
 import utility_functions as uf
 import numpy as np
-# import cProfile
-# import pstats
-import random
 import time
 import copy
 import pandas as pd
+# import cProfile
+# import pstats
 
 
 class DynamicGa2:
@@ -169,7 +168,8 @@ class DynamicGa2:
                 # ----------------------------------------------
                 dur_prep = uf.cal_dur_move_time(center_val, self.av_data, req_id_data_idx)
                 prev_fini_time = 0
-                prev_req = 'c'
+                prev_req = None
+                prev_req_data_idx = None
                 if len(self.new_m_task["taxi" + str(j_taxi)]) != 0:
                     prev_req = self.new_m_task["taxi" + str(j_taxi)][-1]
                     if prev_req != "b":
@@ -215,9 +215,8 @@ class DynamicGa2:
                         prev_fini_time1 = self.new_m_ft["taxi" + str(j_taxi)][-1]
 
                         # check if it's possible to serve in the time interval [early_t, late_t]
-                        if ((prev_fini_time1 + dur_prep1 <= self.av_data["late_t"][req_id_data_idx])
-                                &
-                                (prev_fini_time1 + dur_prep1 >= self.av_data["early_t"][req_id_data_idx])
+                        if ((self.av_data["late_t"][req_id_data_idx] >= prev_fini_time1 + dur_prep1 >=
+                             self.av_data["early_t"][req_id_data_idx])
                                 &
                                 (self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req + dur_back_center) >=
                                  uf.b_min)):
@@ -228,9 +227,8 @@ class DynamicGa2:
                                               round(self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req), 2),
                                               i_req)
 
-                elif ((prev_fini_time + dur_prep <= self.av_data["late_t"][req_id_data_idx])
-                      &
-                      (prev_fini_time + dur_prep >= self.av_data["early_t"][req_id_data_idx])
+                elif ((self.av_data["late_t"][req_id_data_idx] >= prev_fini_time + dur_prep >=
+                       self.av_data["early_t"][req_id_data_idx])
                       &
                       (self.new_bl[j_taxi - 1] - uf.bcr * (dur_prep + dur_t_req + dur_back_center) >=
                        uf.b_min)):
@@ -331,6 +329,8 @@ class DynamicGa2:
 
         while n_not_improve < stop_value:
             new_pop = []
+            if not isinstance(population, np.ndarray):
+                population = np.array(population)
             new_pop.extend(list(population[:nb_select]))
             chrom_p1 = population[np.random.randint(nb_select, size=nb_crossover)]
             chrom_p2 = population[np.random.randint(nb_select + 1, high=nb_chrom - 1, size=nb_crossover)]
@@ -338,6 +338,7 @@ class DynamicGa2:
             crossover_chrom = (crossover_chrom_temp <= 6) * chrom_p1 + (crossover_chrom_temp > 6) * chrom_p2
             new_pop.extend(list(crossover_chrom))
             new_pop.extend(list(np.random.rand(nb_mutation, chrom_size)))
+            population = new_pop
             result_ga = []
             for chromosome in population:
                 result_ga_elem = self.decode_ga(chromosome, center_val, all_data, False)
@@ -428,25 +429,25 @@ if __name__ == "__main__":
     #              "instances/instance50_2.txt", "instances/instance50_3.txt",
     #              "instances/instance50_5.txt", "instances/instance100_3.txt",
     #              "instances/instance100_5.txt"]
-    instances = ["instances/instance100_3.txt"]
+    instances_list = ["instances/instance100_3.txt"]
     windows = windows[4:5]
-    result = True  # to save the results in a csv file
+    with_result = True  # to save the results in a csv file
     for window_lengths in windows:
         try:
-            ga = DynamicGa2(window_lengths, instances, result)
-            if result:
+            ga = DynamicGa2(window_lengths, instances_list, with_result)
+            if with_result:
                 ga = ga.get_test_results()
         except Exception:
             print('error with windows_lengths:', window_lengths)
-            if result:
+            if with_result:
                 ga = pd.DataFrame({'Objective values': [None],
                                    '% unserved requests': [None],
                                    'GA CPU time': [None],
                                    'window lengths': [window_lengths]})
-        if result:
+        if with_result:
             if isinstance(ga_results, pd.DataFrame):
                 ga_results = pd.concat([ga_results, ga], ignore_index=True)
             else:
                 ga_results = ga
-    if result:
-        ga_results.to_csv('ga_new.csv')
+    if with_result:
+        ga_results.to_csv('ga_results.csv')
