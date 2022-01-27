@@ -94,14 +94,13 @@ class DynamicGa2:
             * arr_res : a python list of the objective-value of the corresponding chromosome
         output: * sorted population.
         """
-        n = len(arr_pop)
-        while n > 1:
-            for i in range(n - 1):
-                if arr_res[i] < arr_res[i + 1]:
-                    arr_res[i], arr_res[i + 1] = arr_res[i + 1], arr_res[i]
-                    arr_pop[i], arr_pop[i + 1] = arr_pop[i + 1], arr_pop[i]
-            n = n - 1
-        return arr_pop, arr_res
+        if not isinstance(arr_pop, np.ndarray):
+            arr_pop = np.array(arr_pop)
+        arr_res_sort = copy.deepcopy(arr_res)
+        order = np.argsort(arr_res_sort)[::-1]  # order of the index of the objective value sorted in descending order
+        arr_pop_sort = arr_pop[order]
+        arr_res_sort.sort(reverse=True)
+        return arr_pop_sort, arr_res_sort
 
     def decode_ga(self, chromo, center_val, all_data, detail):
         """the function "decode_ga" represents the decoding of the chromosome in the
@@ -318,7 +317,7 @@ class DynamicGa2:
             result_ga_elem = self.decode_ga(chromosome, center_val, all_data, False)
             result_ga.append(result_ga_elem)
 
-        population, result_ga = self.sorting_population(population, result_ga)  #TODO a améliorer
+        population, result_ga = self.sorting_population(population, result_ga)
         best_res = result_ga[0]
         stop_value = 30
         nb_select = int(0.1 * nb_chrom)
@@ -430,7 +429,7 @@ if __name__ == "__main__":
     #                   "instances/instance50_5.txt", "instances/instance100_3.txt",
     #                   "instances/instance100_5.txt"]
 
-    instances_list = ["instances/instance100_5.txt"]
+    instances_list = ["instances/instance100_3.txt"]
     windows = windows[4:5]
     with_result = False  # to save the results in a csv file
     for window_lengths in windows:
