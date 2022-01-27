@@ -239,7 +239,7 @@ def define_zone(data, center_val, n_zone_x, n_zone_y):
     return zone_id, zone_coord, zone_ori, zone_des, new_data, center_zone[0]
 
 
-def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, av_taxis, data, center_zone):
+def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, nb_taxis, data, center_zone):
     """Function "rolling_time_window" is a function that implements the rolling-horizon approach
     with rolling time windows. It schedules the requests inside the first window using
     the scheduling method "heuristic". then, it moves the unserved requests to the next
@@ -254,7 +254,7 @@ def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, av_taxis, data
            * req          : dictionary of available requests
                             the keys represent the requests index
                             the values are the pick-up times
-           * av_taxis     : list of available taxis
+           * nb_taxis     : number of available taxis
            * data         : pandas dataframe representing the instance
            * center_zone  : zone of the recharging center
     return :
@@ -269,15 +269,15 @@ def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, av_taxis, data
             (see description of the function "obj_value"  ).
     """
     av_req, serv_req, unserv_req = {}, {}, {}
-    matrix_init = {"taxi"+str(j): [] for j in range(1, len(av_taxis)+1)}
+    matrix_init = {"taxi"+str(j): [] for j in range(1, nb_taxis+1)}
     # matrix initializations
     matrix_task = copy.deepcopy(matrix_init)
     matrix_start_time = copy.deepcopy(matrix_init)
     matrix_fini_time = copy.deepcopy(matrix_init)
 
     # battery level initialization
-    nb_taxis = len(av_taxis)
-    battery_level = [100]*nb_taxis  # (100% for all av_taxis)
+    # nb_taxis = len(av_taxis)
+    battery_level = [100]*nb_taxis  # (100% for all taxis)
 
     t_i = time.time()  # initial time (to compute the cpu time)
     for t in range(t_inf, t_sup, window_len):
@@ -286,7 +286,7 @@ def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, av_taxis, data
 
         serv_req, unserv_req, new_matrix_task, new_matrix_start_time, new_matrix_fini_time, new_battery_level = \
             heuristic(av_req,
-                      av_taxis,
+                      nb_taxis,
                       battery_level,
                       matrix_task,
                       matrix_start_time,

@@ -15,7 +15,7 @@ import math
 # ---------------------------------------
 
 
-def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
+def nn_heuristic(av_req, nb_taxis, battery_level, matrix_task,
                  matrix_start_time, matrix_fini_time, data, center_zone, t_sup):
     """The NN (Nearest Neighbor) heuristic schedules the requests according to their proximity
     to taxi locations, i.e., the closest requests are the first to be scheduled
@@ -23,7 +23,7 @@ def nn_heuristic(av_req, av_taxis, battery_level, matrix_task,
            * av_req           : dictionary of available requests
                                 the keys represent the requests index
                                 the values are the pick-up times
-           * av_taxis         : list of available taxis
+           * nb_taxis         : number of available taxis
            * battery_level    : list for battery level of each taxi
            * matrix_task      : a python dictionary representing the tasks of each taxi
                                 the key represents the taxi
@@ -276,19 +276,19 @@ if __name__ == "__main__":
             req = {data.req_id[i]: data.pick_t[i] for i in data.index}
 
             # available taxis in the beginning of the scheduling horizon
-            av_taxis = [i for i in range(1, nb_taxis + 1)]
+            # av_taxis = [i for i in range(1, nb_taxis + 1)]
 
             # rolling_time_window call with FCFS heuristic
             nn_cpu, nn_cumul_obj_val, nn_serv_req, nn_unserv_req, nn_matrix_task, nn_matrix_start_time, nn_matrix_fini_time = \
                 uf.rolling_time_window(nn_heuristic,
                                        t_inf, t_sup,
                                        window_len,
-                                       req, av_taxis,
+                                       req, nb_taxis,
                                        data,
                                        center_zone)
             # -------------------------------------------------------------
             # cProfile to analyze the code
-            # cProfile.run('uf.rolling_time_window(nn_heuristic,t_inf,t_sup,window_len,req, av_taxis,data)',
+            # cProfile.run('uf.rolling_time_window(nn_heuristic,t_inf,t_sup,window_len,req, nb_taxis,data)',
             #              'output.dat')
             # with open("output_time.txt", "w") as f:
             #     p = pstats.Stats("output.dat", stream = f)

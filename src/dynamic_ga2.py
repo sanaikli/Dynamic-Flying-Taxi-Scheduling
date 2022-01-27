@@ -411,7 +411,7 @@ class DynamicGa2:
             av_req = [i for i in av_req if i not in new_serv_req]
             serv_req.extend(new_serv_req)
 
-            print(self.av_bl, self.m_task, self.m_st, self.m_ft)
+            # print(self.av_bl, self.m_task, self.m_st, self.m_ft)
 
         t_f = time.time()  # final time
         cpu = round(t_f - t_i, 4)  # cpu calculation
@@ -423,15 +423,16 @@ class DynamicGa2:
 if __name__ == "__main__":
     ga_results = None
     windows = [90, 180, 240, 360, 480, 540, 720, 840, 1440]
-    # instances = ["instances/instance10_2.txt", "instances/instance20_2.txt",
-    #              "instances/instance20_3.txt", "instances/instance30_2.txt",
-    #              "instances/instance30_3.txt", "instances/instance30_4.txt",
-    #              "instances/instance50_2.txt", "instances/instance50_3.txt",
-    #              "instances/instance50_5.txt", "instances/instance100_3.txt",
-    #              "instances/instance100_5.txt"]
-    instances_list = ["instances/instance100_3.txt"]
+    # instances_list = ["instances/instance10_2.txt", "instances/instance20_2.txt",
+    #                   "instances/instance20_3.txt", "instances/instance30_2.txt",
+    #                   "instances/instance30_3.txt", "instances/instance30_4.txt",
+    #                   "instances/instance50_2.txt", "instances/instance50_3.txt",
+    #                   "instances/instance50_5.txt", "instances/instance100_3.txt",
+    #                   "instances/instance100_5.txt"]
+
+    instances_list = ["instances/instance100_5.txt"]
     windows = windows[4:5]
-    with_result = True  # to save the results in a csv file
+    with_result = False  # to save the results in a csv file
     for window_lengths in windows:
         try:
             ga = DynamicGa2(window_lengths, instances_list, with_result)
