@@ -429,7 +429,7 @@ if __name__ == "__main__":
     #                   "instances/instance50_5.txt", "instances/instance100_3.txt",
     #                   "instances/instance100_5.txt"]
 
-    instances_list = ["instances/instance100_3.txt"]
+    instances_list = ["instances/instance50_2.txt", "instances/instance100_3.txt"]
     windows = windows[4:5]
     with_result = False  # to save the results in a csv file
     for window_lengths in windows:
