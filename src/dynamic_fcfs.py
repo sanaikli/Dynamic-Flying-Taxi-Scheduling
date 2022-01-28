@@ -8,20 +8,21 @@ __author__ = 'saikli'
 import utility_functions as uf
 import statistics
 import operator
+import pandas as pd
+import numpy as np
 # import time
 
 
 # ---------------------------------------
 class DynamicFCFS:
     """First-Come, First-Served"""
-    def __init__(self, window_lengths, instances):
+    def __init__(self, window_lengths, instances, result, matrix_result, instance_orig):
         """Main program for numerical tests
 
         input :
            * window_len   : length of the (rolling) window
            * instances    : list of instance_name
         """
-
 
         # RH parameters
         t_inf, t_sup = 0, 1440  # start and end times (respectively)
@@ -33,9 +34,23 @@ class DynamicFCFS:
         fcfs_avg_profit = []
         fcfs_avg_cpu = []
 
+        # creation of results DataFrame
+        i = 0
+        if result:
+            df_column = ['Objective values', '% unserved requests', 'GA CPU time', 'window length',
+                         'Heuristic']
+            if matrix_result:
+                df_column = ['Objective values', '% unserved requests', 'GA CPU time', 'window length',
+                             'matrix task', 'matrix start time', 'matrix finish time', 'Heuristic']
+            self.__test_results = pd.DataFrame(index=np.arange(0, len(window_lengths)),
+                                               columns=df_column)
+        else:
+            self.__test_results = None
+
+        print("\n\n________________  Heuristic =  FCFS  ________________")
         for window_len in window_lengths:
+            print("\n\n________________  window_len =  ", window_len, "________________")
             try:
-                print("\n\n________________  window_len =  ", window_len, "________________")
                 # argument = 'w+'  # For Test
                 fcfs_obj_values = []
                 fcfs_non_profit = []
@@ -46,7 +61,7 @@ class DynamicFCFS:
                 for instance_name in instances:
                     print("\n*********", instance_name)
                     # loading data from Panwadee's data generator
-                    nb_req, nb_taxis, data, center_val = uf.prepare_data(instance_name, 'panwadee')
+                    nb_req, nb_taxis, data, center_val = uf.prepare_data(instance_name, instance_orig)
                     # data=data[1:7]
                     data.req_id = data.req_id.astype(int)
 
@@ -73,7 +88,7 @@ class DynamicFCFS:
                                                window_len,
                                                req, nb_taxis,
                                                data,
-                                               center_zone)
+                                               center_zone, center_val)
                     fcfs_obj_values.append(round(fcfs_cumul_obj_val, 2))
                     fcfs_non_profit.append(round(uf.dur_non_profit_trip(fcfs_m_task, data, center_val), 2))
                     fcfs_cpus.append(fcfs_cpu)
@@ -100,13 +115,30 @@ class DynamicFCFS:
                 fcfs_avg_profit.append(round(statistics.mean(fcfs_non_profit), 2))
                 fcfs_avg_cpu.append(round(statistics.mean(fcfs_cpus), 2))
             except Exception:
-                print('error with window:', window_len)
+                print('error with window length:', window_len)
+                fcfs_obj_values, fcfs_unserv_perc, fcfs_cpus = None, None, None
+                if matrix_result:
+                    fcfs_m_task, fcfs_m_st, fcfs_m_ft = None, None, None
+            if result:
+                self.__test_results['Objective values'][i] = fcfs_obj_values
+                self.__test_results['% unserved requests'][i] = fcfs_unserv_perc
+                self.__test_results['GA CPU time'][i] = fcfs_cpus
+                self.__test_results['window length'][i] = window_len
+                self.__test_results['Heuristic'][i] = 'FCFS'
+                if matrix_result:
+                    self.__test_results['matrix task'][i] = fcfs_m_task
+                    self.__test_results['matrix start time'][i] = fcfs_m_st
+                    self.__test_results['matrix finish time'][i] = fcfs_m_ft
+                i += 1
 
         print("\n\n--> fcfs_avg_unserv : ", fcfs_avg_unserv)
         print("-->  fcfs_avg_obj : ", fcfs_avg_obj, )
         print("-->  fcfs_avg_cpu : ", fcfs_avg_cpu)
 
-    def fcfs_heuristic(self, av_req, nb_taxis, battery_level, m_task, m_st, m_ft, data, center_zone, t_sup):
+    def get_test_results(self):
+        return self.__test_results
+
+    def fcfs_heuristic(self, av_req, nb_taxis, battery_level, m_task, m_st, m_ft, data, center_zone, center_val, t_sup):
         """the fcfs heuristic schedules requests in a "first-come first-serve"
         fashion, according to requests start time (static case)
 
@@ -126,6 +158,8 @@ class DynamicFCFS:
                                  of starting time of each task
                * m_ft          : a python dictionary representing the finishing time of each task.
                * data          : pandas dataframe representing the instance
+               * center_zone   : zone of the recharging center
+               * center_val    : [x,y]-coordinates of the recharging center
                * t_sup         : upper value of the scheduling horizon (1440 minutes)
         return :
                * serv_req      : list of served requests
@@ -191,10 +225,8 @@ class DynamicFCFS:
                 if enough_battery:
                     if data["pick_t"][i_req_data_idx] + dur_t_req <= t_sup:
                         m_task["taxi" + str(j_taxi)].append(i_req)
-                        m_st["taxi" + str(j_taxi)].append(data["pick_t"][i_req_data_idx])
-
+                        m_st["taxi" + str(j_taxi)].append(round(data["pick_t"][i_req_data_idx], 2))
                         m_ft["taxi" + str(j_taxi)].append(round((data["pick_t"][i_req_data_idx] + dur_t_req), 2))
-
                         battery_level[j_taxi - 1] = round(
                             battery_level[j_taxi - 1] - uf.bcr * (dur_prep + dur_t_req),
                             2)
@@ -206,8 +238,8 @@ class DynamicFCFS:
                 else:  # charge battery if battery level is not enough
                     m_task["taxi" + str(j_taxi)].append("b")
                     dur_prev_to_center = uf.cal_dur_back_to_center(prev_req_data_idx, center_val, data)
-                    m_st["taxi" + str(j_taxi)].append(prev_fini_time + dur_prev_to_center)
-                    m_ft["taxi" + str(j_taxi)].append(prev_fini_time + dur_prev_to_center + uf.R)
+                    m_st["taxi" + str(j_taxi)].append(round(prev_fini_time + dur_prev_to_center, 2))
+                    m_ft["taxi" + str(j_taxi)].append(round(prev_fini_time + dur_prev_to_center + uf.R, 2))
                     battery_level[j_taxi - 1] = 100
 
                     dur_prep1 = uf.cal_dur_move_time(center_val, data, i_req_data_idx)
@@ -215,14 +247,15 @@ class DynamicFCFS:
 
                     # ----------------------------------------------------------
                     # check if it's possible to serve in the time interval [early_t, late_t]
-                    if ((data["late_t"][i_req_data_idx] >= prev_fini_time1 + dur_prep1 >= data["early_t"][i_req_data_idx])
+                    if ((data["late_t"][i_req_data_idx] >= prev_fini_time1 + dur_prep1 >=
+                         data["early_t"][i_req_data_idx])
                             &
                             (battery_level[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req + dur_back_center) >=
                              uf.b_min)):
                         if data["pick_t"][i_req_data_idx] + dur_t_req <= t_sup:
                             m_task["taxi" + str(j_taxi)].append(i_req)
                             # new pick_t: serve the requests as soon as the taxi
-                            # finiches its previous task
+                            # finishes its previous task
                             i_req_new_pick_time = round(prev_fini_time1 + dur_prep1, 2)
                             m_st["taxi" + str(j_taxi)].append(i_req_new_pick_time)
                             m_ft["taxi" + str(j_taxi)].append(round((i_req_new_pick_time + dur_t_req), 2))
@@ -237,7 +270,7 @@ class DynamicFCFS:
                   (battery_level[j_taxi - 1] - uf.bcr * (dur_prep + dur_t_req + dur_back_center) >=
                    uf.b_min)):
                 # new pick_t: serve the requests as soon as the taxi
-                # finiches its previous task
+                # finishes its previous task
                 i_req_new_pick_time = round(prev_fini_time + dur_prep, 2)
                 if i_req_new_pick_time + dur_t_req <= t_sup:
                     m_task["taxi" + str(j_taxi)].append(i_req)
@@ -251,18 +284,3 @@ class DynamicFCFS:
 
         unserv_req = av_req  # update unserved demands
         return serv_req, unserv_req, m_task, m_st, m_ft, battery_level
-
-
-# Main program for numerical tests
-if __name__ == "__main__":
-
-    windows = [480, 540, 720, 1440]  # , 90, 180, 240, 360, 480, 720, 840, 1440]
-
-    # instances_list = ["new_instances/instance50_2.txt", "new_instances/instance100_3.txt", "new_instances/instance100_5.txt",
-    #              "new_instances/instance250_5.txt", "new_instances/instance250_10.txt",
-    #              "new_instances/instance500_4.txt",
-    #              "new_instances/instance500_10.txt", "new_instances/instance1000_9.txt",
-    #              "new_instances/instance1000_15.txt",
-    #              "new_instances/instance10000_20.txt"]
-    instances_list = ["instances/instance10_2.txt"]
-    fcfs = DynamicFCFS(windows, instances_list)

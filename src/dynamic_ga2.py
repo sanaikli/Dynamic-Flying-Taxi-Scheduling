@@ -19,7 +19,7 @@ import pandas as pd
 
 class DynamicGa2:
     """Genetic Algorithm (GA)"""
-    def __init__(self, window_len, instances, result):
+    def __init__(self, window_lengths, instances, result, matrix_result, instance_orig):
         """Main program for numerical tests
 
         input :
@@ -32,57 +32,76 @@ class DynamicGa2:
         """
 
         # creation of results DataFrame
-        test_results = pd.DataFrame(index=np.arange(0, 1), columns=['Objective values', '% unserved requests',
-                                                                    'GA CPU time', 'window lengths'])
+        i = 0
+        if result:
+            df_column = ['Objective values', '% unserved requests', 'GA CPU time', 'window length',
+                         'Heuristic']
+            if matrix_result:
+                df_column = ['Objective values', '% unserved requests', 'GA CPU time', 'window length',
+                             'matrix task', 'matrix start time', 'matrix finish time', 'Heuristic']
+            self.__test_results = pd.DataFrame(index=np.arange(0, len(window_lengths)),
+                                               columns=df_column)
+        else:
+            self.__test_results = None
         self.t_inf, self.t_sup = 0, 1440  # start and end times of the day (in minutes)
 
-        print("\n\n__________  window length =  ", window_len, " min _____")
-        # argument = 'w+'  # For Test
-        ga_obj_values = []
-        ga_non_profit = []
-        ga_cpus = []
-        ga_unserv_perc = []  # percentage of unserved demands
-        # ga_averages_morning, fcfs_averages_evening = [], []  # For Test
+        print("\n\n________________  Heuristic =  GA  ________________")
+        for window_len in window_lengths:
+            print("\n\n__________  window length =  ", window_len, " min _____")
+            try:
+                # argument = 'w+'  # For Test
+                ga_obj_values = []
+                ga_non_profit = []
+                ga_cpus = []
+                ga_unserv_perc = []  # percentage of unserved demands
+                # ga_averages_morning, fcfs_averages_evening = [], []  # For Test
 
-        for instance_name in instances:
-            print("\n--->", instance_name)
-            nb_req, self.nb_taxis, all_data, center_val = uf.prepare_data(instance_name, 'panwadee')
-            # all_data=all_data[:6]
-            all_data.req_id = all_data.req_id.astype(int)
+                for instance_name in instances:
+                    print("\n--->", instance_name)
+                    nb_req, self.nb_taxis, all_data, center_val = uf.prepare_data(instance_name, instance_orig)
+                    # all_data=all_data[:6]
+                    all_data.req_id = all_data.req_id.astype(int)
 
-            for i_run in range(1, 2):
-                cpu, s_req, uns_req = self.rh_ga2(window_len,
-                                                  all_data,
-                                                  center_val)
+                    for i_run in range(1, 2):
+                        cpu, s_req, uns_req = self.rh_ga2(window_len,
+                                                          all_data,
+                                                          center_val)
 
-                # -------------------------------------------------------------
-                # cProfile to analyze the code
-                # cProfile.run('rh_ga2(t_inf, t_sup, window_len, av_taxis,data, center_val)',
-                #                 'ga_output.dat')
-                # with open("ga_output_time.txt", "w") as f:
-                #     p = pstats.Stats("ga_output.dat", stream = f)
-                #     p.sort_stats("time").print_stats()
-                #
-                # with open("ga_output_calls.txt", "w") as f:
-                #     p = pstats.Stats("ga_output.dat", stream = f)
-                #     p.sort_stats("calls").print_stats()
-                # -------------------------------------------------------------
+                        # -------------------------------------------------------------
+                        # cProfile to analyze the code
+                        # cProfile.run('rh_ga2(t_inf, t_sup, window_len, av_taxis,data, center_val)',
+                        #                 'ga_output.dat')
+                        # with open("ga_output_time.txt", "w") as f:
+                        #     p = pstats.Stats("ga_output.dat", stream = f)
+                        #     p.sort_stats("time").print_stats()
+                        #
+                        # with open("ga_output_calls.txt", "w") as f:
+                        #     p = pstats.Stats("ga_output.dat", stream = f)
+                        #     p.sort_stats("calls").print_stats()
+                        # -------------------------------------------------------------
 
-                ga_obj_values.append(round(self.obj_val, 2))
-                ga_cpus.append(round(cpu, 2))
-                ga_non_profit.append(round(uf.dur_non_profit_trip(self.m_task, all_data, center_val), 2))
-                ga_unserv_perc.append(round(len(uns_req) / len(all_data) * 100, 2))
+                        ga_obj_values.append(round(self.obj_val, 2))
+                        ga_cpus.append(round(cpu, 2))
+                        ga_non_profit.append(round(uf.dur_non_profit_trip(self.m_task, all_data, center_val), 2))
+                        ga_unserv_perc.append(round(len(uns_req) / len(all_data) * 100, 2))
+            except Exception:
+                print('error with window length:', window_len)
+                ga_obj_values, ga_unserv_perc, ga_cpus = None, None, None
+            if result:
+                self.__test_results['Objective values'][i] = ga_obj_values
+                self.__test_results['% unserved requests'][i] = ga_unserv_perc
+                self.__test_results['GA CPU time'][i] = ga_cpus
+                self.__test_results['window length'][i] = window_len
+                self.__test_results['Heuristic'][i] = 'GA'
+                if matrix_result:
+                    self.__test_results['matrix task'][i] = self.m_task
+                    self.__test_results['matrix start time'][i] = self.m_st
+                    self.__test_results['matrix finish time'][i] = self.m_ft
+                i += 1
 
         print("\n\n * Objective values : ", ga_obj_values)
         print(" * Percentage of unserved requests: ", ga_unserv_perc)
         print(" * GA CPU time : ", ga_cpus)
-        # save ga_obj_values, ga_unserv_perc, ga_cpus in test_results DataFrame
-        if result:
-            test_results['Objective values'][0] = ga_obj_values
-            test_results['% unserved requests'][0] = ga_unserv_perc
-            test_results['GA CPU time'][0] = ga_cpus
-            test_results['window lengths'][0] = window_lengths
-        self.__test_results = test_results
 
     def get_test_results(self):
         return self.__test_results
@@ -94,14 +113,13 @@ class DynamicGa2:
             * arr_res : a python list of the objective-value of the corresponding chromosome
         output: * sorted population.
         """
-        n = len(arr_pop)
-        while n > 1:
-            for i in range(n - 1):
-                if arr_res[i] < arr_res[i + 1]:
-                    arr_res[i], arr_res[i + 1] = arr_res[i + 1], arr_res[i]
-                    arr_pop[i], arr_pop[i + 1] = arr_pop[i + 1], arr_pop[i]
-            n = n - 1
-        return arr_pop, arr_res
+        if not isinstance(arr_pop, np.ndarray):
+            arr_pop = np.array(arr_pop)
+        arr_res_sort = copy.deepcopy(arr_res)
+        order = np.argsort(arr_res_sort)[::-1]  # order of the index of the objective value sorted in descending order
+        arr_pop_sort = arr_pop[order]
+        arr_res_sort.sort(reverse=True)
+        return arr_pop_sort, arr_res_sort
 
     def decode_ga(self, chromo, center_val, all_data, detail):
         """the function "decode_ga" represents the decoding of the chromosome in the
@@ -318,7 +336,7 @@ class DynamicGa2:
             result_ga_elem = self.decode_ga(chromosome, center_val, all_data, False)
             result_ga.append(result_ga_elem)
 
-        population, result_ga = self.sorting_population(population, result_ga)  #TODO a améliorer
+        population, result_ga = self.sorting_population(population, result_ga)
         best_res = result_ga[0]
         stop_value = 30
         nb_select = int(0.1 * nb_chrom)
@@ -419,36 +437,36 @@ class DynamicGa2:
         return cpu, serv_req, av_req
 
 
-# ___________________            main          _______________________________
-if __name__ == "__main__":
-    ga_results = None
-    windows = [90, 180, 240, 360, 480, 540, 720, 840, 1440]
-    # instances_list = ["instances/instance10_2.txt", "instances/instance20_2.txt",
-    #                   "instances/instance20_3.txt", "instances/instance30_2.txt",
-    #                   "instances/instance30_3.txt", "instances/instance30_4.txt",
-    #                   "instances/instance50_2.txt", "instances/instance50_3.txt",
-    #                   "instances/instance50_5.txt", "instances/instance100_3.txt",
-    #                   "instances/instance100_5.txt"]
-
-    instances_list = ["instances/instance100_5.txt"]
-    windows = windows[4:5]
-    with_result = False  # to save the results in a csv file
-    for window_lengths in windows:
-        try:
-            ga = DynamicGa2(window_lengths, instances_list, with_result)
-            if with_result:
-                ga = ga.get_test_results()
-        except Exception:
-            print('error with windows_lengths:', window_lengths)
-            if with_result:
-                ga = pd.DataFrame({'Objective values': [None],
-                                   '% unserved requests': [None],
-                                   'GA CPU time': [None],
-                                   'window lengths': [window_lengths]})
-        if with_result:
-            if isinstance(ga_results, pd.DataFrame):
-                ga_results = pd.concat([ga_results, ga], ignore_index=True)
-            else:
-                ga_results = ga
-    if with_result:
-        ga_results.to_csv('ga_results.csv')
+# # ___________________            main          _______________________________
+# if __name__ == "__main__":
+#     ga_results = None
+#     windows = [90, 180, 240, 360, 480, 540, 720, 840, 1440]
+#     # instances_list = ["instances/instance10_2.txt", "instances/instance20_2.txt",
+#     #                   "instances/instance20_3.txt", "instances/instance30_2.txt",
+#     #                   "instances/instance30_3.txt", "instances/instance30_4.txt",
+#     #                   "instances/instance50_2.txt", "instances/instance50_3.txt",
+#     #                   "instances/instance50_5.txt", "instances/instance100_3.txt",
+#     #                   "instances/instance100_5.txt"]
+#
+#     instances_list = ["instances/instance50_2.txt", "instances/instance100_3.txt"]
+#     windows = windows[4:5]
+#     with_result = False  # to save the results in a csv file
+#     for window_lengths in windows:
+#         try:
+#             ga = DynamicGa2(window_lengths, instances_list, with_result)
+#             if with_result:
+#                 ga = ga.get_test_results()
+#         except Exception:
+#             print('error with windows_lengths:', window_lengths)
+#             if with_result:
+#                 ga = pd.DataFrame({'Objective values': [None],
+#                                    '% unserved requests': [None],
+#                                    'GA CPU time': [None],
+#                                    'window lengths': [window_lengths]})
+#         if with_result:
+#             if isinstance(ga_results, pd.DataFrame):
+#                 ga_results = pd.concat([ga_results, ga], ignore_index=True)
+#             else:
+#                 ga_results = ga
+#     if with_result:
+#         ga_results.to_csv('ga_results.csv')

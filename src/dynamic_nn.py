@@ -9,6 +9,8 @@ __date__ = '10/14/2021'
 import utility_functions as uf
 import statistics
 import math
+import pandas as pd
+import numpy as np
 # import cProfile
 # import pstats
 # ---------------------------------------
@@ -16,7 +18,7 @@ import math
 
 class DynamicNN:
     """Nearest Neighbor"""
-    def __init__(self, window_lengths, instances, result):
+    def __init__(self, window_lengths, instances, result, matrix_result, instance_orig):
         # RH parameters
         # start and end times (respectively) of the day (in minutes) : 1440 = 24h
         # the scheduling horizon T=[0, 1440]
@@ -27,103 +29,134 @@ class DynamicNN:
         nn_avg_profit = []
         nn_avg_cpu = []
 
+        # creation of results DataFrame
+        i = 0
+        if result:
+            df_column = ['Objective values', '% unserved requests', 'GA CPU time', 'window length',
+                         'Heuristic']
+            if matrix_result:
+                df_column = ['Objective values', '% unserved requests', 'GA CPU time', 'window length',
+                             'matrix task', 'matrix start time', 'matrix finish time', 'Heuristic']
+            self.__test_results = pd.DataFrame(index=np.arange(0, len(window_lengths)),
+                                               columns=df_column)
+        else:
+            self.__test_results = None
+
+        print("\n\n________________  Heuristic =  NN  ________________")
         for window_len in window_lengths:
             print("\n\n________________  window_len =  ", window_len, "________________")
-            if result:
-                argument = 'w+'
-            nn_obj_values = []
-            nn_non_profit = []
-            nn_cpus = []
-            nn_unserv_perc = []  # percentage of unserved demands
-            nn_averages_morning, nn_averages_evening = [], []
-            for instance_name in instances:
-                print("\n*********", instance_name)
-                # loading data from Panwadee's data generator
-                nb_req, nb_taxis, data, center_val = uf.prepare_data(instance_name,
-                                                                     instance_orig='sana')
-                # data=data[1:20]
-                data.req_id = data.req_id.astype(int)
+            try:
+                # argument = 'w+'  # For Test
+                nn_obj_values = []
+                nn_non_profit = []
+                nn_cpus = []
+                nn_unserv_perc = []  # percentage of unserved demands
+                nn_averages_morning, nn_averages_evening = [], []
+                for instance_name in instances:
+                    print("\n*********", instance_name)
+                    # loading data from Panwadee's data generator
+                    nb_req, nb_taxis, data, center_val = uf.prepare_data(instance_name, instance_orig)
+                    # data=data[1:20]
+                    data.req_id = data.req_id.astype(int)
 
-                # all (known) requests and their pick-up times
-                # in the beginning of the scheduling horizon
-                req = {data.req_id[i]: data.pick_t[i] for i in data.index}
+                    # all (known) requests and their pick-up times
+                    # in the beginning of the scheduling horizon
+                    req = {data.req_id[i]: data.pick_t[i] for i in data.index}
 
-                # available taxis in the beginning of the scheduling horizon
-                # av_taxis = [i for i in range(1, nb_taxis + 1)]
+                    # available taxis in the beginning of the scheduling horizon
+                    # av_taxis = [i for i in range(1, nb_taxis + 1)]
 
-                # rolling_time_window call with FCFS heuristic
-                nn_cpu, nn_cumul_obj_val, nn_serv_req, nn_unserv_req, nn_matrix_task, nn_matrix_start_time, nn_matrix_fini_time = \
-                    uf.rolling_time_window(nn_heuristic,
-                                           t_inf, t_sup,
-                                           window_len,
-                                           req, nb_taxis,
-                                           data)
-                # -------------------------------------------------------------
-                # cProfile to analyze the code
-                # cProfile.run('uf.rolling_time_window(nn_heuristic,t_inf,t_sup,window_len,req, nb_taxis,data)',
-                #              'output.dat')
-                # with open("output_time.txt", "w") as f:
-                #     p = pstats.Stats("output.dat", stream = f)
-                #     p.sort_stats("time").print_stats()
-                #
-                # with open("output_calls.txt", "w") as f:
-                #     p = pstats.Stats("output.dat", stream = f)
-                #     p.sort_stats("calls").print_stats()
+                    # rolling_time_window call with FCFS heuristic
+                    nn_cpu, nn_cumul_obj_val, nn_serv_req, nn_unserv_req, nn_matrix_task, nn_matrix_start_time, nn_matrix_fini_time = \
+                        uf.rolling_time_window(self.nn_heuristic,
+                                               t_inf, t_sup,
+                                               window_len,
+                                               req, nb_taxis,
+                                               data,
+                                               None, center_val)
+                    # -------------------------------------------------------------
+                    # cProfile to analyze the code
+                    # cProfile.run('uf.rolling_time_window(nn_heuristic,t_inf,t_sup,window_len,req, nb_taxis,data)',
+                    #              'output.dat')
+                    # with open("output_time.txt", "w") as f:
+                    #     p = pstats.Stats("output.dat", stream = f)
+                    #     p.sort_stats("time").print_stats()
+                    #
+                    # with open("output_calls.txt", "w") as f:
+                    #     p = pstats.Stats("output.dat", stream = f)
+                    #     p.sort_stats("calls").print_stats()
 
-                # -------------------------------------------------------------
+                    # -------------------------------------------------------------
 
-                nn_obj_values.append(round(nn_cumul_obj_val, 2))
-                nn_non_profit.append(round(uf.dur_non_profit_trip(nn_matrix_task,
-                                                                  data, center_val), 2))
-                nn_cpus.append(nn_cpu)
-                nn_unserv_perc.append(round(len(nn_unserv_req) / len(data), 2) * 100)
+                    nn_obj_values.append(round(nn_cumul_obj_val, 2))
+                    nn_non_profit.append(round(uf.dur_non_profit_trip(nn_matrix_task,
+                                                                      data, center_val), 2))
+                    nn_cpus.append(nn_cpu)
+                    nn_unserv_perc.append(round(len(nn_unserv_req) / len(data), 2) * 100)
 
-                if result:
                     # save results in ".txt" file named
                     # "results_<dynamic/static>_nn.txt
-                    if window_len == 1440:
-                        file_name = "results_nn_static.txt"
-                    else:
-                        file_name = "results_nn_rh.txt"
-                    with open(file_name, argument) as f:
-                        f.write("\n\n\n--------\t" + str(instance_name) + "\t--------")
-                        f.write("\n* matrix_task : " + str(nn_matrix_task))
-                        f.write("\n* unserved req : " + str(nn_unserv_req))
-                        f.write("\n* objective value : " + str(round(nn_cumul_obj_val, 2)))
-                        f.write("\n* cpu time : " + str(nn_cpu))
-                    argument = 'a'
-                # print("\nmatrix task : ", nn_matrix_task)
-                print("\n* objective value : ", round(nn_cumul_obj_val, 2),
-                      " (total service time)")
-                print("* cpu : ", round(nn_cpu, 4))
-                print("* percentage of unserved requests : ",
-                      round((len(nn_unserv_req) / len(data)) * 100, 2), " %")
+                    # if window_len == 1440:
+                    #     file_name = "results_nn_static.txt"
+                    # else:
+                    #     file_name = "results_nn_rh.txt"
+                    # with open(file_name, argument) as f:
+                    #     f.write("\n\n\n--------\t" + str(instance_name) + "\t--------")
+                    #     f.write("\n* matrix_task : " + str(nn_matrix_task))
+                    #     f.write("\n* unserved req : " + str(nn_unserv_req))
+                    #     f.write("\n* objective value : " + str(round(nn_cumul_obj_val, 2)))
+                    #     f.write("\n* cpu time : " + str(nn_cpu))
+                    # argument = 'a'
+                    # print("\nmatrix task : ", nn_matrix_task)
+                    print("\n* objective value : ", round(nn_cumul_obj_val, 2), " (total service time)")
+                    print("* cpu : ", round(nn_cpu, 4))
+                    print("* percentage of unserved requests : ",
+                          round((len(nn_unserv_req) / len(data)) * 100, 2), " %")
 
-                # -----------------------------------------------------------------
-                """Instance statistics """
-                nn_total_peak_morning = data.loc[data.pick_t.between(360, 600),
-                                                 'pick_t'].count()
-                nn_ave_morning = round(nn_total_peak_morning / 6, 2)
-                nn_averages_morning.append(nn_ave_morning)
+                    # -----------------------------------------------------------------
+                    """Instance statistics """
+                    nn_total_peak_morning = data.loc[data.pick_t.between(360, 600),
+                                                     'pick_t'].count()
+                    nn_ave_morning = round(nn_total_peak_morning / 6, 2)
+                    nn_averages_morning.append(nn_ave_morning)
 
-                nn_total_peak_evening = data.loc[data.pick_t.between(1020, 1260),
-                                                 'pick_t'].count()
-                nn_ave_evening = round(nn_total_peak_evening / 6, 2)
-                nn_averages_evening.append(nn_ave_evening)
-                # -----------------------------------------------------------------
+                    nn_total_peak_evening = data.loc[data.pick_t.between(1020, 1260),
+                                                     'pick_t'].count()
+                    nn_ave_evening = round(nn_total_peak_evening / 6, 2)
+                    nn_averages_evening.append(nn_ave_evening)
+                    # -----------------------------------------------------------------
 
-            nn_avg_unserv.append(round(statistics.mean(nn_unserv_perc), 2))
-            nn_avg_obj.append(round(statistics.mean(nn_obj_values), 2))
-            nn_avg_profit.append(round(statistics.mean(nn_non_profit), 2))
-            nn_avg_cpu.append(round(statistics.mean(nn_cpus), 2))
+                nn_avg_unserv.append(round(statistics.mean(nn_unserv_perc), 2))
+                nn_avg_obj.append(round(statistics.mean(nn_obj_values), 2))
+                nn_avg_profit.append(round(statistics.mean(nn_obj_values), 2))
+                nn_avg_cpu.append(round(statistics.mean(nn_cpus), 2))
+            except Exception:
+                print('error with window length:', window_len)
+                nn_obj_values, nn_unserv_perc, nn_cpus = None, None, None
+                if matrix_result:
+                    nn_matrix_task, nn_matrix_start_time, nn_matrix_fini_time = None, None, None
+            if result:
+                self.__test_results['Objective values'][i] = nn_obj_values
+                self.__test_results['% unserved requests'][i] = nn_unserv_perc
+                self.__test_results['GA CPU time'][i] = nn_cpus
+                self.__test_results['window length'][i] = window_len
+                self.__test_results['Heuristic'][i] = 'NN'
+                if matrix_result:
+                    self.__test_results['matrix task'][i] = nn_matrix_task
+                    self.__test_results['matrix start time'][i] = nn_matrix_start_time
+                    self.__test_results['matrix finish time'][i] = nn_matrix_fini_time
+                i += 1
 
         print("\n\n--> nn_avg_unserv : ", nn_avg_unserv)
         print("\n-->  nn_avg_obj : ", nn_avg_obj, )
         print("\n-->  nn_avg_profit : ", nn_avg_profit)
         print("\n-->  nn_avg_cpu : ", nn_avg_cpu)
 
+    def get_test_results(self):
+        return self.__test_results
+
     def nn_heuristic(self, av_req, nb_taxis, battery_level, matrix_task,
-                     matrix_start_time, matrix_fini_time, data, t_sup):
+                     matrix_start_time, matrix_fini_time, data, center_zone, center_val, t_sup):
         """the NN (Nearest Neighbor) heuristic schedules the requests according to their proximity
         to taxi locations, i.e., the closest requests are the first to be scheduled
         input :
@@ -144,6 +177,8 @@ class DynamicNN:
                                      the key represents the taxi
                                      the values are a list of finishing time of the request
                * data              : pandas dataframe representing the instance
+               * center_zone   : zone of the recharging center
+               * center_val    : [x,y]-coordinates of the recharging center
                * t_sup             : upper value of the scheduling horizon (1440 minutes)
         return :
                * serv_req          : dictionary of served requests
@@ -249,10 +284,11 @@ class DynamicNN:
                 if enough_battery:
                     if data["pick_t"][i_req_data_idx] + dur_t_req <= t_sup:
                         matrix_task["taxi" + str(j_taxi)].append(i_req)
-                        matrix_start_time["taxi" + str(j_taxi)].append(data["pick_t"][i_req_data_idx])
+                        matrix_start_time["taxi" + str(j_taxi)].append(round(data["pick_t"][i_req_data_idx], 2))
                         matrix_fini_time["taxi" + str(j_taxi)].append(
                             round((data["pick_t"][i_req_data_idx] + dur_t_req), 2))
-                        battery_level[j_taxi - 1] = round(battery_level[j_taxi - 1] - uf.bcr * (dur_prep + dur_t_req), 2)
+                        battery_level[j_taxi - 1] = round(battery_level[j_taxi - 1] - uf.bcr *
+                                                          (dur_prep + dur_t_req), 2)
 
                         # remove the assigned demand from av_requests
                         serv_req[i_req] = av_req[i_req]
@@ -262,8 +298,8 @@ class DynamicNN:
                     matrix_task["taxi" + str(j_taxi)].append("b")
                     dur_prev_to_center = uf.cal_dur_back_to_center(prev_req_data_idx,
                                                                    center_val, data)
-                    matrix_start_time["taxi" + str(j_taxi)].append(prev_fini_time + dur_prev_to_center)
-                    matrix_fini_time["taxi" + str(j_taxi)].append(prev_fini_time + dur_prev_to_center + uf.R)
+                    matrix_start_time["taxi" + str(j_taxi)].append(round(prev_fini_time + dur_prev_to_center, 2))
+                    matrix_fini_time["taxi" + str(j_taxi)].append(round(prev_fini_time + dur_prev_to_center + uf.R, 2))
                     battery_level[j_taxi - 1] = 100
                     dur_prep1 = uf.cal_dur_move_time(center_val, data, i_req_data_idx)
                     prev_fini_time1 = matrix_fini_time["taxi" + str(j_taxi)][-1]
@@ -271,8 +307,10 @@ class DynamicNN:
                     # ----------------------------------------------------------
                     # check if it's possible to serve in the time interval [early_t, late_t]
                     # after battery charging
-                    if ((data["late_t"][i_req_data_idx] >= prev_fini_time1 + dur_prep1 >= data["early_t"][i_req_data_idx])
-                            & (battery_level[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req + dur_back_center) >= uf.b_min)):
+                    if ((data["late_t"][i_req_data_idx] >= prev_fini_time1 + dur_prep1 >=
+                         data["early_t"][i_req_data_idx])
+                            & (battery_level[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req + dur_back_center) >=
+                               uf.b_min)):
                         # new pick_t: serve the requests as soon as the taxi
                         # finishes its previous task
                         i_req_new_pick_time = round(prev_fini_time1 + dur_prep1, 2)
@@ -282,8 +320,8 @@ class DynamicNN:
 
                             matrix_start_time["taxi" + str(j_taxi)].append(i_req_new_pick_time)
                             matrix_fini_time["taxi" + str(j_taxi)].append(round((i_req_new_pick_time + dur_t_req), 2))
-                            battery_level[j_taxi - 1] = round(battery_level[j_taxi - 1] - uf.bcr * (dur_prep1 + dur_t_req),
-                                                              2)
+                            battery_level[j_taxi - 1] = round(battery_level[j_taxi - 1] - uf.bcr *
+                                                              (dur_prep1 + dur_t_req), 2)
                             # remove the assigned demand from av_req
                             serv_req[i_req] = av_req[i_req]
                             del av_req[i_req]
@@ -305,19 +343,3 @@ class DynamicNN:
 
         unserv_req = av_req  # update unserved demands
         return serv_req, unserv_req, matrix_task, matrix_start_time, matrix_fini_time, battery_level
-
-
-# Main program for numerical tests
-if __name__ == "__main__":
-    save_results = True   # to save the results in a .txt file
-    windows = [60]  # , 90, 180, 240, 360, 480, 720, 840, 1440]
-    # instances_list = ["new_instances/instance50_2.txt", "new_instances/instance100_3.txt", "new_instances/instance100_5.txt",
-    #              "new_instances/instance250_5.txt", "new_instances/instance250_10.txt",
-    #              "new_instances/instance500_4.txt", "new_instances/instance500_10.txt",
-    #              "new_instances/instance1000_9.txt", "new_instances/instance1000_15.txt",
-    #              "new_instances/instance10000_20.txt"]
-    instances_list = ["new_instances/instance50_2.txt",
-                      "new_instances/instance100_3.txt",
-                      "new_instances/instance100_5.txt",
-                      "new_instances/instance250_5.txt"]
-    nn = DynamicNN(windows, instances_list, save_results)

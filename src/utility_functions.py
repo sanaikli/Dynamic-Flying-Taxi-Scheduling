@@ -58,7 +58,6 @@ def prepare_data(file_instance, instance_orig):
         data = pd.DataFrame(matrix, columns=['req_id', 'ori_x', 'ori_y', 'des_x',
                                              'des_y', 'early_t', 'pick_t', 'late_t',
                                              'dist_t', 'dur_t'])
-
     else:  # instance_orig == "panwadee"
         data = pd.DataFrame(matrix, columns=['req_id', 'ori_x', 'ori_y', 'des_x', 'des_y', 'pick_t'])
         # Compute duration time from origin to destination + takeoff and landing time
@@ -239,7 +238,7 @@ def define_zone(data, center_val, n_zone_x, n_zone_y):
     return zone_id, zone_coord, zone_ori, zone_des, new_data, center_zone[0]
 
 
-def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, nb_taxis, data, center_zone):
+def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, nb_taxis, data, center_zone, center_val):
     """Function "rolling_time_window" is a function that implements the rolling-horizon approach
     with rolling time windows. It schedules the requests inside the first window using
     the scheduling method "heuristic". then, it moves the unserved requests to the next
@@ -257,6 +256,7 @@ def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, nb_taxis, data
            * nb_taxis     : number of available taxis
            * data         : pandas dataframe representing the instance
            * center_zone  : zone of the recharging center
+           * center_val   : [x,y]-coordinates of the recharging center
     return :
            * cpu          : cpu time
            * cumul_obj_val: the value of the objective-function at the end of the horizon
@@ -293,6 +293,7 @@ def rolling_time_window(heuristic, t_inf, t_sup, window_len, req, nb_taxis, data
                       matrix_fini_time,
                       data,
                       center_zone,
+                      center_val,
                       t_sup)
         matrix_task = new_matrix_task
         matrix_start_time = new_matrix_start_time
