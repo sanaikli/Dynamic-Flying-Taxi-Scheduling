@@ -1,19 +1,19 @@
 About this project:
 
-This project contains the implementations and the test instances used in our article intitled ìA rolling horizon approach for the dynamic scheduling of flying taxisî. 
+This project contains the implementations and the test instances used in our article entitled ‚ÄúA rolling horizon approach for the dynamic scheduling of flying taxis‚Äù. 
 
 * All of the material provided in this project is freely available for use.
 
-* Readers may refer to our original paper ìA rolling horizon approach for the dynamic scheduling of flying taxisî (details about this paper will be available soon) for further details on the material provided in this page.
+* Readers may refer to our original paper ‚ÄúA rolling horizon approach for the dynamic scheduling of flying taxis‚Äù (details about this paper will be available soon) for further details on the material provided in this page.
 
-There are currently five python files in the directory named ìsrcî:
+There are currently five python files in the directory named ‚Äúsrc‚Äù:
 * dynamic_fcfs.py: is a python file that contains the implementation of the First-Come, First-Served heuristic
 * dynamic_ga2.py: contains the implementation of a genetic algorithm
 * dynamic_nn.py: implements the Nearest Neighbor heuristic
 * dynamic_nn_zones.py: contains the implementation of the improved nearest neighbor heuristic
 * utility_functions.py: is a python file containing all the utility functions that are frequently used in the above-mentioned files
 
-The instances used in our original paper are provided in the ì.txtî files, from the directory ìsrcî. In each instance, the following information is provided, for each customer request:
+The instances used in our original paper are provided in the ‚Äú.txt‚Äù files, from the directory ‚Äúsrc‚Äù. In each instance, the following information is provided, for each customer request:
 
 * The request identifier (req_id).
 * The origin point of the request in the x-axis (ori_x) and y-axis (ori_y).
